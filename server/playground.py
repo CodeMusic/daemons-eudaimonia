@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The DAEMONS playground's server: the game in a browser, the companion beside it, what's new in each release.
 
-    ./bindPlayground.sh                       the usual way (this, on port 4740)
+    ./bindEudaimonia.sh                       the usual way (this, on port 4740)
     python3 server/playground.py              the latest ROM RELEASE in ../DAEMONS
     python3 server/playground.py --build      DAEMONS' engineGba build instead (what ./bindDaemons.sh last made)
     python3 server/playground.py --port 8000
@@ -40,7 +40,7 @@ ranges a LAN uses and the tailnet (100.64.0.0/10, fd7a:115c:a1e0::/48). Anything
 import argparse, hashlib, http.client, http.server, ipaddress, json, os, re, shutil, signal, socket, subprocess, sys
 import threading, time, urllib.parse
 
-ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))   # through DAEMONS/playground's symlink to the repo
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))   # through DAEMONS/eudaimonia's symlink to the repo
 DAEMONS = os.environ.get("DAEMONS_ROOT") or os.path.join(os.path.dirname(ROOT), "DAEMONS")
 SITE = os.path.join(ROOT, "site")
 RELEASES = os.path.join(DAEMONS, "ROM RELEASE")

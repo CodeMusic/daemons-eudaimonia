@@ -19,7 +19,7 @@ to reach things without playing to them. It is for testing, not for a first play
 made while the playground runs is played by the next game. If a newer release lands while you play, the page says so
 ([WHAT'S NEW and HELP](WHATS-NEW-and-HELP)).
 
-`./bindPlayground.sh --build` plays DAEMONS' own `engineGba` build instead, to try a change before it is released.
+`./bindEudaimonia.sh --build` plays DAEMONS' own `engineGba` build instead, to try a change before it is released.
 
 Each build keeps its own save and its own companion: CONTENT, CONTEXT and their two DEBUG builds never share one
 ([Saves](Saves), [The COMPANION tab](The-COMPANION-tab)).

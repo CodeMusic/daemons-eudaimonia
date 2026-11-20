@@ -285,8 +285,11 @@ const $ = (id) => document.getElementById(id);
 let info = null, save = null, saveName = "", game = null, started = false;
 
 // ---- the chooser ----------------------------------------------------------------------------------------------------
-function remembered() { try { return JSON.parse(localStorage.getItem("daemons-playground") || "{}"); } catch { return {}; } }
-function remember(v) { try { localStorage.setItem("daemons-playground", JSON.stringify(v)); } catch { /* a private window */ } }
+// The browser keeps the choices and the saves under the repository's first name: the rename to daemons-eudaimonia
+// (C-438) leaves STORE as it was, or every tester's kept save would be lost.
+const STORE = "daemons-playground";
+function remembered() { try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch { return {}; } }
+function remember(v) { try { localStorage.setItem(STORE, JSON.stringify(v)); } catch { /* a private window */ } }
 function chosen() {
   return { edition: document.querySelector("input[name=edition]:checked").value, debug: $("debug").checked };
 }
@@ -368,7 +371,7 @@ const store = {
   db: null,
   open() {
     return this.db || (this.db = new Promise((res, rej) => {
-      const r = indexedDB.open("daemons-playground", 1);
+      const r = indexedDB.open(STORE, 1);
       r.onupgradeneeded = () => r.result.createObjectStore("saves");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);

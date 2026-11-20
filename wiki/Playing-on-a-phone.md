@@ -1,6 +1,6 @@
 # Playing on a phone
 
-Open the tailnet address `./bindPlayground.sh` prints. The buttons are on the screen, laid out as on a GBA.
+Open the tailnet address `./bindEudaimonia.sh` prints. The buttons are on the screen, laid out as on a GBA.
 
 ## TAP TO PLAY
 
@@ -27,4 +27,4 @@ the game; a mapping you chose is kept.
 ## When something goes wrong on a tester's device
 
 A phone has no console to read, so the page tells **the playground's own output** -- in the terminal where
-`./bindPlayground.sh` runs -- its errors, what EmulatorJS warns of, and a line as each game starts (`N frames in 5 s, sound running`).
+`./bindEudaimonia.sh` runs -- its errors, what EmulatorJS warns of, and a line as each game starts (`N frames in 5 s, sound running`).

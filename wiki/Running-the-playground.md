@@ -2,8 +2,8 @@
 
 ## What it needs
 
-- **DAEMONS beside it**: `~/Projects/DAEMONS` and `~/Projects/daemons-playground`, as DAEMONS' `setup.sh` arranges
-  (it links this repository in as `DAEMONS/playground`). The ROMs are read from DAEMONS' `ROM RELEASE/`, so a release
+- **DAEMONS beside it**: `~/Projects/DAEMONS` and `~/Projects/daemons-eudaimonia`, as DAEMONS' `setup.sh` arranges
+  (it links this repository in as `DAEMONS/eudaimonia`). The ROMs are read from DAEMONS' `ROM RELEASE/`, so a release
   must have been built on this machine.
 - **Python 3.8 or newer**, nothing to install, for the playground itself.
 - **For the COMPANION tab**: daemons-companion beside DAEMONS (linked as `DAEMONS/companion`), `npm install` once in its
@@ -12,7 +12,7 @@
 ## Start it
 
 ```bash
-./bindPlayground.sh
+./bindEudaimonia.sh
 ```
 
 Then open `http://localhost:4740/`, or the tailnet address it prints to play from a phone. Nothing else needs to be
@@ -20,13 +20,13 @@ running.
 
 | | |
 |---|---|
-| `./bindPlayground.sh --build` | DAEMONS' own `engineGba` build instead of the latest release, to try a change before it is released |
-| `./bindPlayground.sh --port 8000` | another port |
-| `./bindPlayground.sh --companion URL` | the COMPANION tab's site from somewhere else -- `http://localhost:8081/` is the Expo dev server's, to work on the companion and see each change at once |
-| `./bindPlayground.sh --no-companion` | no companion of the playground's own |
-| `./bindPlayground.sh --companion-port 4731` | the first of the four companions' ports |
-| `./bindPlayground.sh always` | keep it running: a login agent starts it at login and again if it stops, its output in `data/playground.log` (it does not keep the Mac awake) |
-| `./bindPlayground.sh never` | stop doing that |
+| `./bindEudaimonia.sh --build` | DAEMONS' own `engineGba` build instead of the latest release, to try a change before it is released |
+| `./bindEudaimonia.sh --port 8000` | another port |
+| `./bindEudaimonia.sh --companion URL` | the COMPANION tab's site from somewhere else -- `http://localhost:8081/` is the Expo dev server's, to work on the companion and see each change at once |
+| `./bindEudaimonia.sh --no-companion` | no companion of the playground's own |
+| `./bindEudaimonia.sh --companion-port 4731` | the first of the four companions' ports |
+| `./bindEudaimonia.sh always` | keep it running: a login agent starts it at login and again if it stops, its output in `data/playground.log` (it does not keep the Mac awake) |
+| `./bindEudaimonia.sh never` | stop doing that |
 | `DAEMONS_ROOT=/path/to/DAEMONS` | DAEMONS somewhere other than beside this repository |
 | `COMPANION_ROOT=/path/to/daemons-companion` | the companion somewhere other than `DAEMONS/companion` |
 

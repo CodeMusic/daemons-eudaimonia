@@ -1,4 +1,12 @@
-# daemons-playground
+# daemons-eudaimonia
+
+**EUDAIMONIA is to be built here**: the site where [daemons-companion](https://github.com/CodeMusic/daemons-companion)'s
+PRAXIS (the doing) and ARETE (the points) are used together, a dashboard of the work under way at its front door.
+None of it is built yet; its plan is section 10 of the companion's
+[docs/PROJECTS.md](https://github.com/CodeMusic/daemons-companion/blob/main/docs/PROJECTS.md). The repository was
+the DAEMONS playground until 2026-11-20, and today it still serves that, as everything below describes.
+
+## The DAEMONS playground
 
 **An all-in-one harness to demo and beta test [DAEMONS](https://github.com/CodeMusic/DAEMONS)**, the whole game and
 everything around it, from one URL. New to the game itself? **[MICRO-START](https://github.com/CodeMusic/DAEMONS/blob/main/docs/DAEMONS-microstart.pdf)** (PDF) is five pages,
@@ -25,18 +33,18 @@ It always serves the **newest release**: the ROMs are read from DAEMONS' `ROM RE
 It is the browser's side of what [the companion's one app](https://github.com/CodeMusic/daemons-companion/wiki/The-one-app)
 does on an iPhone or iPad -- the game and the companion together -- for anyone on your network, with nothing to install.
 
-**Every page of how it works: [the playground's wiki](https://github.com/CodeMusic/daemons-playground/wiki).** The
+**Every page of how it works: [this repository's wiki](https://github.com/CodeMusic/daemons-eudaimonia/wiki).** The
 game itself, its editions and its releases: [the DAEMONS wiki](https://github.com/CodeMusic/DAEMONS/wiki). To play
 DAEMONS on your own hardware instead, each DAEMONS release publishes patches for your own cartridge's game
 ([Releases](https://github.com/CodeMusic/DAEMONS/wiki/Releases)).
 
 ## Running it
 
-DAEMONS sits beside this repository (`~/Projects/DAEMONS` and `~/Projects/daemons-playground`), as its
-`setup.sh` arranges, and links this one in as `DAEMONS/playground`.
+DAEMONS sits beside this repository (`~/Projects/DAEMONS` and `~/Projects/daemons-eudaimonia`), as its
+`setup.sh` arranges, and links this one in as `DAEMONS/eudaimonia`.
 
 ```bash
-./bindPlayground.sh
+./bindEudaimonia.sh
 ```
 
 Then open `http://localhost:4740/`, or the tailnet address it prints to play from a phone. Nothing else needs to be
@@ -46,13 +54,13 @@ companion needs daemons-companion beside DAEMONS (DAEMONS' `setup.sh` links it a
 
 | | |
 |---|---|
-| `./bindPlayground.sh --build` | DAEMONS' own `engineGba` build instead of the latest release, to try a change before it is released |
-| `./bindPlayground.sh --port 8000` | another port |
-| `./bindPlayground.sh --companion URL` | the COMPANION tab's site, instead of the playground's own export of it: `http://localhost:8081/` is the Expo dev server's (`./companion/bindCompanion.sh app`), to work on the companion and see it at once |
-| `./bindPlayground.sh --no-companion` | no companion of the playground's own: the tab shows the site on its own server |
-| `./bindPlayground.sh --companion-port 4731` | the first of the four companions' ports |
-| `./bindPlayground.sh always` | keep it running: a login agent starts it at login and again if it stops, its output in `data/playground.log` (it does not keep the Mac awake) |
-| `./bindPlayground.sh never` | stop doing that |
+| `./bindEudaimonia.sh --build` | DAEMONS' own `engineGba` build instead of the latest release, to try a change before it is released |
+| `./bindEudaimonia.sh --port 8000` | another port |
+| `./bindEudaimonia.sh --companion URL` | the COMPANION tab's site, instead of the playground's own export of it: `http://localhost:8081/` is the Expo dev server's (`./companion/bindCompanion.sh app`), to work on the companion and see it at once |
+| `./bindEudaimonia.sh --no-companion` | no companion of the playground's own: the tab shows the site on its own server |
+| `./bindEudaimonia.sh --companion-port 4731` | the first of the four companions' ports |
+| `./bindEudaimonia.sh always` | keep it running: a login agent starts it at login and again if it stops, its output in `data/playground.log` (it does not keep the Mac awake) |
+| `./bindEudaimonia.sh never` | stop doing that |
 | `DAEMONS_ROOT=/path/to/DAEMONS` | DAEMONS somewhere other than beside this repository |
 | `COMPANION_ROOT=/path/to/daemons-companion` | the companion somewhere other than `DAEMONS/companion` |
 

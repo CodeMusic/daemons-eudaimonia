@@ -1,4 +1,8 @@
-# DAEMONS playground
+# daemons-eudaimonia
+
+**EUDAIMONIA is to be built here**: the site where the companion's PRAXIS (the doing) and ARETE (the points) are used
+together. None of it is built yet ([its plan](https://github.com/CodeMusic/daemons-companion/blob/main/docs/PROJECTS.md),
+section 10). Until then the repository serves what it was named for until 2026-11-20, **the DAEMONS playground**:
 
 **The game in a browser, for demos and beta tests**, from one URL. Choose an edition, start a new game or continue from
 a `.sav`, and play [DAEMONS](https://github.com/CodeMusic/DAEMONS) right there -- on a Mac with the keyboard, on a phone
@@ -17,7 +21,7 @@ New to the game itself? **[MICRO-START](https://github.com/CodeMusic/DAEMONS/blo
 
 | page | what it covers |
 |---|---|
-| [Running the playground](Running-the-playground) | `bindPlayground.sh`, its options, what it needs, and who it answers |
+| [Running the playground](Running-the-playground) | `bindEudaimonia.sh`, its options, what it needs, and who it answers |
 | [Editions and builds](Editions-and-builds) | CONTENT and CONTEXT, the DEBUG builds, the newest release or your own build |
 | [Saves](Saves) | how the game's save is kept in the browser, a `.sav` to start from or download, a new game |
 | [The COMPANION tab](The-COMPANION-tab) | a companion of the playground's own for each build, sending a daemon, from a phone, the site it shows |
@@ -42,4 +46,4 @@ EmulatorJS's own CDN, version 4.2.3.
 | [CodeMusic/DAEMONS](https://github.com/CodeMusic/DAEMONS) ([wiki](https://github.com/CodeMusic/DAEMONS/wiki)) | **the game** -- its design, its tools, its releases and patches |
 | [CodeMusic/pokefirered-daemons](https://github.com/CodeMusic/pokefirered-daemons) ([wiki](https://github.com/CodeMusic/pokefirered-daemons/wiki)) | the game's engine |
 | [CodeMusic/daemons-companion](https://github.com/CodeMusic/daemons-companion) ([wiki](https://github.com/CodeMusic/daemons-companion/wiki)) | where a daemon goes when it leaves the game: the app, the hub, the boards |
-| **CodeMusic/daemons-playground** | this: the game in a browser, with the companion beside it |
+| **CodeMusic/daemons-eudaimonia** | this: EUDAIMONIA to come; today the game in a browser, with the companion beside it |
