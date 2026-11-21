@@ -2,7 +2,8 @@
 
 **EUDAIMONIA is to be built here**: the site where the companion's PRAXIS (the doing) and ARETE (the points) are used
 together. None of it is built yet ([its plan](https://github.com/CodeMusic/daemons-companion/blob/main/docs/PROJECTS.md),
-section 10). Until then the repository serves what it was named for until 2026-11-20, **the DAEMONS playground**:
+section 10). Its first pieces are built, on port 4741: the front page's frame and [Accounts and sign-in](Accounts-and-sign-in).
+Beside them the repository still serves what it was named for until 2026-11-20, **the DAEMONS playground**:
 
 **The game in a browser, for demos and beta tests**, from one URL. Choose an edition, start a new game or continue from
 a `.sav`, and play [DAEMONS](https://github.com/CodeMusic/DAEMONS) right there -- on a Mac with the keyboard, on a phone
@@ -21,6 +22,7 @@ New to the game itself? **[MICRO-START](https://github.com/CodeMusic/DAEMONS/blo
 
 | page | what it covers |
 |---|---|
+| [Accounts and sign-in](Accounts-and-sign-in) | EUDAIMONIA's first pieces: the first sign-in, people and agents, a daemon for each, THE EASTER EGG's password |
 | [Running the playground](Running-the-playground) | `bindEudaimonia.sh`, its options, what it needs, and who it answers |
 | [Editions and builds](Editions-and-builds) | CONTENT and CONTEXT, the DEBUG builds, the newest release or your own build |
 | [Saves](Saves) | how the game's save is kept in the browser, a `.sav` to start from or download, a new game |

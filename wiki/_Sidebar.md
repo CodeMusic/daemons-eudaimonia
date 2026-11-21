@@ -1,5 +1,6 @@
 **[daemons-eudaimonia](Home)**
 
+- [Accounts and sign-in](Accounts-and-sign-in)
 - [Running the playground](Running-the-playground)
 - [Editions and builds](Editions-and-builds)
 - [Saves](Saves)

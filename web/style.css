@@ -1,0 +1,92 @@
+/* EUDAIMONIA's front page: the playground's palette (site/index.html), dark, so the two read as one place. */
+:root {
+  --bg: #0f1115; --panel: #171a21; --raised: #1e222b; --line: #2a2f3a; --text: #e8e6e3; --dim: #9aa0aa;
+  --accent: #e9c46a; --bad: #e07a5f; --ok: #81b29a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--text); font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px;
+         letter-spacing: .06em; }
+button:hover { border-color: var(--dim); }
+button.primary { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
+button:disabled { opacity: .5; cursor: wait; }
+[hidden] { display: none !important; }
+.dim { color: var(--dim); }
+h1, h2, h3 { letter-spacing: .12em; font-weight: 700; }
+h1 { font-size: 26px; margin: 0; }
+h2 { font-size: 18px; margin: 0 0 8px; }
+h3 { font-size: 13px; color: var(--dim); margin: 22px 0 8px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border-bottom: 1px solid var(--line);
+       background: var(--panel); position: sticky; top: 0; z-index: 2; }
+.sub { margin: 2px 0 0; color: var(--dim); font-size: 14px; }
+#who { position: relative; }
+.me { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; }
+.me img, .row img, .sprite { image-rendering: pixelated; }
+.me img { width: 40px; height: 40px; background: var(--bg); border-radius: 6px; }
+#menu { position: absolute; right: 0; top: calc(100% + 6px); display: flex; flex-direction: column; min-width: 180px;
+        background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 6px; }
+#menu button { border: 0; background: none; text-align: left; }
+#menu button:hover { background: var(--panel); }
+
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-height: 160px; }
+.panel h3 { margin-top: 0; }
+footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 32px; font-size: 13px; }
+
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 20px;
+         width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog.wide { width: min(860px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgb(0 0 0 / .6); }
+dialog form { margin: 0; }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dialog-head button { border: 0; background: none; font-size: 18px; padding: 4px 8px; }
+label { display: block; margin: 12px 0 0; color: var(--dim); font-size: 14px; }
+label input:not([type=radio]):not([type=checkbox]) { display: block; width: 100%; margin-top: 4px; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; color: var(--text); }
+label.check, .kinds label { display: inline-flex; align-items: center; gap: 8px; margin-right: 16px; color: var(--text); }
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.error { color: var(--bad); min-height: 1.2em; margin: 10px 0 0; font-size: 14px; }
+code#secret-value { display: block; padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+                    font: 15px/1.4 ui-monospace, Menlo, monospace; word-break: break-all; user-select: all; }
+.make { border-top: 1px solid var(--line); margin-top: 20px; }
+
+/* the daemons, grouped by type, each group in its type's colour */
+.picker input[type=search] { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line);
+                             border-radius: 8px; color: var(--text); margin-bottom: 8px; }
+.group { margin: 10px 0; }
+.group h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; display: inline-block; padding: 2px 10px;
+            border-radius: 999px; background: var(--type, #4a4a4a); color: #fff; }
+.group .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.daemon { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 10px;
+          letter-spacing: .04em; background: var(--bg); border: 2px solid transparent; border-radius: 8px; min-width: 0; }
+.daemon img { width: 64px; height: 64px; }
+.daemon span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daemon[aria-pressed=true] { border-color: var(--accent); }
+.daemon:hover { border-color: var(--type, var(--dim)); }
+.none { margin-bottom: 6px; }
+
+/* the admin's lists */
+.accounts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg); border: 1px solid var(--line);
+       border-radius: 10px; padding: 8px 10px; }
+.row img { width: 40px; height: 40px; }
+.row .grow { flex: 1; min-width: 120px; }
+.row b { letter-spacing: .04em; }
+.row small { display: block; color: var(--dim); }
+.row button { padding: 4px 10px; font-size: 13px; }
+.tag { font-size: 11px; letter-spacing: .1em; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; color: var(--dim); }
+.tag.warn { color: var(--accent); border-color: var(--accent); }
+.tag.off { color: var(--bad); border-color: var(--bad); }
+.blank { display: inline-block; width: 40px; height: 40px; border-radius: 6px; background: var(--raised); }
+
+@media (max-width: 520px) {
+  .sub { display: none; }
+  h1 { font-size: 20px; }
+  .group .grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+  .daemon img { width: 48px; height: 48px; }
+}

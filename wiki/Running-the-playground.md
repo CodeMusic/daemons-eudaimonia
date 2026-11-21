@@ -16,16 +16,18 @@
 ```
 
 Then open `http://localhost:4740/`, or the tailnet address it prints to play from a phone. Nothing else needs to be
-running.
+running. The same command starts EUDAIMONIA beside it on port 4741 ([Accounts and sign-in](Accounts-and-sign-in)),
+when Node 22.18 or newer is there; without it the playground runs alone.
 
 | | |
 |---|---|
 | `./bindEudaimonia.sh --build` | DAEMONS' own `engineGba` build instead of the latest release, to try a change before it is released |
-| `./bindEudaimonia.sh --port 8000` | another port |
+| `./bindEudaimonia.sh --port 8000` | another port for the playground |
+| `./bindEudaimonia.sh playground` | the playground alone, with any of the options here |
 | `./bindEudaimonia.sh --companion URL` | the COMPANION tab's site from somewhere else -- `http://localhost:8081/` is the Expo dev server's, to work on the companion and see each change at once |
 | `./bindEudaimonia.sh --no-companion` | no companion of the playground's own |
 | `./bindEudaimonia.sh --companion-port 4731` | the first of the four companions' ports |
-| `./bindEudaimonia.sh always` | keep it running: a login agent starts it at login and again if it stops, its output in `data/playground.log` (it does not keep the Mac awake) |
+| `./bindEudaimonia.sh always` | keep both running: a login agent starts them at login and again if they stop, their output in `data/playground.log` (it does not keep the Mac awake) |
 | `./bindEudaimonia.sh never` | stop doing that |
 | `DAEMONS_ROOT=/path/to/DAEMONS` | DAEMONS somewhere other than beside this repository |
 | `COMPANION_ROOT=/path/to/daemons-companion` | the companion somewhere other than `DAEMONS/companion` |

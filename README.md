@@ -2,9 +2,34 @@
 
 **EUDAIMONIA is to be built here**: the site where [daemons-companion](https://github.com/CodeMusic/daemons-companion)'s
 PRAXIS (the doing) and ARETE (the points) are used together, a dashboard of the work under way at its front door.
-None of it is built yet; its plan is section 10 of the companion's
+Its plan is section 10 of the companion's
 [docs/PROJECTS.md](https://github.com/CodeMusic/daemons-companion/blob/main/docs/PROJECTS.md). The repository was
-the DAEMONS playground until 2026-11-20, and today it still serves that, as everything below describes.
+the DAEMONS playground until 2026-11-20, and it still serves that beside the site (below).
+
+## EUDAIMONIA, so far
+
+**Its first pieces answer on port 4741**: the front page's frame, with THE DASHBOARD's place kept for what comes next,
+and **SIGN IN** beside it, with the accounts behind it. Every word on it is a DRAFT.
+
+- **The first sign-in is `admin` / `admin`, and it is changed at once.** Until it is, that password is taken only from
+  this machine, a home network or the tailnet, with no proxy between, and the session it opens can do nothing but
+  choose a new one.
+- **The admin makes the other accounts**, in ACCOUNTS: **a person** gets a one-time password, changed at their first
+  sign-in; **an agent** (a lane, a model at work) never has a password but a key, sent as `Authorization: Bearer <key>`,
+  and is never an admin. Either is shown once. The admin can make a new one, close an account and open it again, and
+  make another person an admin; there is always one.
+- **Every account picks a daemon** in YOUR ACCOUNT, from the daemons grouped by type, each group in its type's colour.
+  Its sprite is the account's picture, and is to be its lane's on THE DASHBOARD. The daemons and their sprites are read
+  from DAEMONS and the companion beside this repository, never copied here.
+- **The admin sets THE EASTER EGG's password.** No password, no egg.
+
+It keeps its accounts in `data/eudaimonia/accounts.json` (this machine's, mode 0600): passwords as scrypt hashes,
+sessions and keys as SHA-256 hashes of random bytes, so nothing there can be read back. A browser's change must come
+from a page of this site, as JSON; a sign-in is refused for a quarter of an hour after eight wrong passwords from one
+address.
+
+It runs on **Node 22.18 or newer**, which runs its TypeScript (`src/`) as it is: there is nothing to install to run it.
+`npm test` runs its tests the same way; `npm install` once fetches the type checker, for `npm run typecheck`.
 
 ## The DAEMONS playground
 
@@ -47,7 +72,9 @@ DAEMONS sits beside this repository (`~/Projects/DAEMONS` and `~/Projects/daemon
 ./bindEudaimonia.sh
 ```
 
-Then open `http://localhost:4740/`, or the tailnet address it prints to play from a phone. Nothing else needs to be
+Then open `http://localhost:4740/` for the playground and `http://localhost:4741/` for EUDAIMONIA, or the tailnet
+addresses they print, to reach them from a phone. If EUDAIMONIA stops, it starts again by itself ten seconds later;
+if the playground stops, both do. Nothing else needs to be
 running: the COMPANION tab's site is the playground's own too (see [The companion's site](#the-companions-site)). The
 companion needs daemons-companion beside DAEMONS (DAEMONS' `setup.sh` links it as `DAEMONS/companion`), installed once
 (`npm install` in its `server/` and its `app/`), and Node 24.
@@ -55,11 +82,13 @@ companion needs daemons-companion beside DAEMONS (DAEMONS' `setup.sh` links it a
 | | |
 |---|---|
 | `./bindEudaimonia.sh --build` | DAEMONS' own `engineGba` build instead of the latest release, to try a change before it is released |
-| `./bindEudaimonia.sh --port 8000` | another port |
+| `./bindEudaimonia.sh --port 8000` | another port for the playground |
+| `./bindEudaimonia.sh site` | EUDAIMONIA alone (`--port N` for another than 4741, `--data DIR` for another accounts folder) |
+| `./bindEudaimonia.sh playground` | the playground alone, with any of the options here |
 | `./bindEudaimonia.sh --companion URL` | the COMPANION tab's site, instead of the playground's own export of it: `http://localhost:8081/` is the Expo dev server's (`./companion/bindCompanion.sh app`), to work on the companion and see it at once |
 | `./bindEudaimonia.sh --no-companion` | no companion of the playground's own: the tab shows the site on its own server |
 | `./bindEudaimonia.sh --companion-port 4731` | the first of the four companions' ports |
-| `./bindEudaimonia.sh always` | keep it running: a login agent starts it at login and again if it stops, its output in `data/playground.log` (it does not keep the Mac awake) |
+| `./bindEudaimonia.sh always` | keep both running: a login agent starts them at login and again if they stop, their output in `data/playground.log` (it does not keep the Mac awake) |
 | `./bindEudaimonia.sh never` | stop doing that |
 | `DAEMONS_ROOT=/path/to/DAEMONS` | DAEMONS somewhere other than beside this repository |
 | `COMPANION_ROOT=/path/to/daemons-companion` | the companion somewhere other than `DAEMONS/companion` |

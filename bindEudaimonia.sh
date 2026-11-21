@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# daemons-eudaimonia, where EUDAIMONIA is to be built. Today it serves the DAEMONS playground: the game in a browser,
-# the companion beside it, what's new in each release.
+# daemons-eudaimonia: EUDAIMONIA's first pieces, on port 4741 -- the front page's frame, sign-in and the accounts
+# (C-439, C-436) -- beside the DAEMONS playground on 4740: the game in a browser, the companion beside it, what's new in
+# each release.
 #
-#   ./bindEudaimonia.sh                 the latest ROM RELEASE, on port 4740
-#   ./bindEudaimonia.sh --build         DAEMONS' engineGba build instead
-#   ./bindEudaimonia.sh --port 8000
+#   ./bindEudaimonia.sh                 both: the playground (the latest ROM RELEASE) and EUDAIMONIA
+#   ./bindEudaimonia.sh --build         the playground plays DAEMONS' engineGba build instead
+#   ./bindEudaimonia.sh --port 8000     the playground's port
 #   ./bindEudaimonia.sh --companion URL the COMPANION tab's site (default: its own export; http://localhost:8081/ is Metro's)
 #   ./bindEudaimonia.sh --no-companion  no companion of the playground's own: the tab shows its site's own server
 #   ./bindEudaimonia.sh --companion-port 4731   the first of its own companions' four ports (4731-4734)
-#   ./bindEudaimonia.sh always          keep it running: started at login, started again if it stops (a login agent)
+#   ./bindEudaimonia.sh site [--port N] EUDAIMONIA alone (Node 22.18 or newer; 4741 unless told, or $EUDAIMONIA_PORT)
+#   ./bindEudaimonia.sh playground ...  the playground alone, with the options above
+#   ./bindEudaimonia.sh always          keep both running: started at login, started again if they stop (a login agent)
 #   ./bindEudaimonia.sh never           stop doing that
 #
 # It reads the ROMs from DAEMONS beside this repository (../DAEMONS, or $DAEMONS_ROOT) and answers only this machine,
@@ -16,10 +19,11 @@
 # started when a game of that build first asks for it -- daemons-companion's server (DAEMONS/companion, or
 # $COMPANION_ROOT) with its own database and the browser's save, under data/. Its site is the playground's own as well:
 # exported from the companion's app as committed (expo export, Node 24) into data/companion-site/ as this starts, and
-# again whenever its HEAD moves -- no Expo dev server needed. Ctrl-C stops it and them.
+# again whenever its HEAD moves -- no Expo dev server needed. EUDAIMONIA keeps its accounts in data/eudaimonia/; the
+# first is admin, its password admin, taken only from home and changed at once. Ctrl-C stops them all.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")"
-case "${1:-}" in -h|--help|help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+case "${1:-}" in -h|--help|help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 
 # -- always / never: the playground's server as a login agent (2026-10-28: it had stopped, and a tester's link went nowhere).
 # launchd starts it at login and again if it stops; its output goes to data/playground.log, where a tester's device
@@ -65,4 +69,44 @@ if [[ "${1:-}" == never ]]; then
   exit 0
 fi
 
-exec python3 server/playground.py "$@"
+# -- EUDAIMONIA runs on Node 22.18 or newer, which runs its TypeScript as it is: no package to install
+site_node() {
+  local n v major minor
+  for n in "$(command -v node 2>/dev/null || true)" /opt/homebrew/opt/node@24/bin/node /opt/homebrew/opt/node@22/bin/node; do
+    [[ -n "$n" && -x "$n" ]] || continue
+    v="$("$n" -p 'process.versions.node' 2>/dev/null)" || continue
+    IFS=. read -r major minor _ <<<"$v"
+    if (( major > 22 || (major == 22 && minor >= 18) )); then echo "$n"; return 0; fi
+  done
+  return 1
+}
+case "${1:-}" in
+  site) shift; NODE="$(site_node)" || { echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer" >&2; exit 69; }
+        exec "$NODE" src/main.ts "$@" ;;
+  playground) shift; exec python3 server/playground.py "$@" ;;
+esac
+if ! NODE="$(site_node)"; then
+  echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer; the playground runs alone" >&2
+  exec python3 server/playground.py "$@"
+fi
+
+# -- both. The playground is what testers' links reach: when it stops, this stops, and launchd (or you) starts both
+# again, as before. EUDAIMONIA is new: when it stops, it starts again by itself ten seconds later, and the playground
+# never notices.
+pg="" site=""
+trap 'kill $pg $site 2>/dev/null || true; wait 2>/dev/null || true; exit 0' INT TERM
+python3 server/playground.py "$@" & pg=$!
+"$NODE" src/main.ts & site=$!
+while kill -0 "$pg" 2>/dev/null; do
+  if ! kill -0 "$site" 2>/dev/null; then
+    code=0; wait "$site" 2>/dev/null || code=$?
+    echo "eudaimonia: stopped (exit $code); starting again in 10 s" >&2
+    sleep 10
+    "$NODE" src/main.ts & site=$!
+  fi
+  sleep 2
+done
+code=0; wait "$pg" 2>/dev/null || code=$?
+kill "$site" 2>/dev/null || true
+wait "$site" 2>/dev/null || true
+exit "$code"

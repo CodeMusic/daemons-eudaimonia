@@ -1,0 +1,122 @@
+<!doctype html>
+<!-- EUDAIMONIA's front page (C-439): THE DASHBOARD's frame (C-411, to come) with SIGN IN beside it, and the accounts
+     (C-436) in modals, so nothing leaves the page. Served by src/server.ts; app.js draws it. Every word DRAFT. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EUDAIMONIA</title>
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>EUDAIMONIA</h1>
+    <p class="sub">PRAXIS and ARETE, held together</p>
+  </div>
+  <div id="who">
+    <button id="signin-open" class="primary" hidden>SIGN IN</button>
+    <div id="me" hidden>
+      <button id="me-open" class="me" aria-haspopup="menu"><img id="me-avatar" alt=""><span id="me-name"></span></button>
+      <div id="menu" role="menu" hidden>
+        <button role="menuitem" data-open="account">YOUR ACCOUNT</button>
+        <button role="menuitem" data-open="admin" id="admin-item" hidden>ACCOUNTS</button>
+        <button role="menuitem" id="signout">SIGN OUT</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="dashboard" aria-labelledby="dash-title">
+    <h2 id="dash-title">THE DASHBOARD</h2>
+    <p class="dim">The work under way, drawn as the daemons doing it. It is being built.</p>
+    <div class="panels">
+      <article class="panel"><h3>THE LANES</h3><p class="dim">Each lane at work, drawn with its daemon.</p></article>
+      <article class="panel"><h3>WAITING ON YOU</h3><p class="dim">What only you can answer.</p></article>
+      <article class="panel"><h3>THE RELEASES</h3><p class="dim">Each one, and what it changed.</p></article>
+    </div>
+  </section>
+</main>
+
+<footer><p class="dim">Every word here is a DRAFT.</p></footer>
+
+<dialog id="signin" aria-labelledby="signin-title">
+  <form method="dialog" id="signin-form">
+    <h2 id="signin-title">SIGN IN</h2>
+    <label>Name <input name="name" autocomplete="username" required autocapitalize="none" spellcheck="false"></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <p class="error" role="alert"></p>
+    <div class="actions"><button type="button" data-close>CANCEL</button><button class="primary" value="go">SIGN IN</button></div>
+  </form>
+</dialog>
+
+<dialog id="change" aria-labelledby="change-title">
+  <form method="dialog" id="change-form">
+    <h2 id="change-title">A NEW PASSWORD</h2>
+    <p class="dim" id="change-why">This password was chosen for you. Choose your own before anything else.</p>
+    <label>The password you signed in with <input name="old" type="password" autocomplete="current-password" required></label>
+    <label>A new one, ten characters or more <input name="new" type="password" autocomplete="new-password" minlength="10" required></label>
+    <label>The new one again <input name="again" type="password" autocomplete="new-password" minlength="10" required></label>
+    <p class="error" role="alert"></p>
+    <div class="actions"><button type="button" id="change-out">SIGN OUT</button><button class="primary" value="go">CHANGE IT</button></div>
+  </form>
+</dialog>
+
+<dialog id="account" class="wide" aria-labelledby="account-title">
+  <div class="dialog-head"><h2 id="account-title">YOUR ACCOUNT</h2><button data-close aria-label="Close">✕</button></div>
+  <p class="dim" id="account-line"></p>
+  <h3>YOUR DAEMON</h3>
+  <p class="dim">Its sprite is your picture here, and your lane's on THE DASHBOARD.</p>
+  <div class="picker" id="account-picker"></div>
+  <h3>YOUR PASSWORD</h3>
+  <div id="account-password">
+    <button id="account-change">CHANGE YOUR PASSWORD</button>
+  </div>
+</dialog>
+
+<dialog id="admin" class="wide" aria-labelledby="admin-title">
+  <div class="dialog-head"><h2 id="admin-title">ACCOUNTS</h2><button data-close aria-label="Close">✕</button></div>
+  <h3>PEOPLE</h3>
+  <ul class="accounts" id="people"></ul>
+  <h3>AGENTS</h3>
+  <p class="dim">A lane, or a model at work. An agent has a key instead of a password, and is never an admin.</p>
+  <ul class="accounts" id="agents"></ul>
+  <form id="make-form" class="make">
+    <h3>MAKE AN ACCOUNT</h3>
+    <div class="kinds">
+      <label><input type="radio" name="kind" value="person" checked> A PERSON</label>
+      <label><input type="radio" name="kind" value="agent"> AN AGENT</label>
+    </div>
+    <label>Name <input name="name" list="lanes-list" required autocapitalize="none" spellcheck="false" pattern="[a-z0-9][a-z0-9._\-]{1,31}"></label>
+    <datalist id="lanes-list"></datalist>
+    <label class="check" id="make-admin"><input type="checkbox" name="admin"> An admin too</label>
+    <p class="error" role="alert"></p>
+    <div class="actions"><button class="primary">MAKE IT</button></div>
+  </form>
+  <form id="egg-form" class="make">
+    <h3>THE EASTER EGG</h3>
+    <p class="dim" id="egg-line"></p>
+    <label>Its password <input name="password" type="password" autocomplete="off" minlength="6" required></label>
+    <p class="error" role="alert"></p>
+    <div class="actions"><button class="primary">SET IT</button></div>
+  </form>
+</dialog>
+
+<dialog id="pick" class="wide" aria-labelledby="pick-title">
+  <div class="dialog-head"><h2 id="pick-title">A DAEMON FOR</h2><button data-close aria-label="Close">✕</button></div>
+  <div class="picker" id="pick-picker"></div>
+</dialog>
+
+<dialog id="secret" aria-labelledby="secret-title">
+  <form method="dialog">
+    <h2 id="secret-title">SHOWN ONCE</h2>
+    <p id="secret-line"></p>
+    <code id="secret-value"></code>
+    <p class="dim">Copy it now: it is kept only as a hash, and can't be shown again. A new one can be made.</p>
+    <div class="actions"><button type="button" id="secret-copy">COPY</button><button class="primary">DONE</button></div>
+  </form>
+</dialog>
+</body>
+</html>

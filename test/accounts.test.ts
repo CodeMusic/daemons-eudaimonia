@@ -1,0 +1,140 @@
+// C-436's rules, held by the store itself: the first password, who may do what, people apart from agents.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Accounts, Refused } from "../src/accounts.ts";
+
+const CHEAP = 1 << 10;   // scrypt's N, small for the tests
+const fresh = async () => { const a = new Accounts(null, CHEAP); await a.open(); return a; };
+const refused = (status: number) => (e: unknown) => e instanceof Refused && e.status === status;
+
+test("the first run makes admin / admin, once", async () => {
+  const a = new Accounts(null, CHEAP);
+  assert.equal(await a.open(), true);
+  assert.equal(await a.open(), false);
+  const [admin] = a.list();
+  assert.equal(admin.name, "admin");
+  assert.equal(admin.admin, true);
+  assert.equal(admin.first, true);
+  assert.equal(admin.mustChange, true);
+});
+
+test("the first password is taken only from home, and opens a limited session", async () => {
+  const a = await fresh();
+  await assert.rejects(a.signIn("admin", "admin", false), refused(403));
+  const r = await a.signIn("admin", "admin", true);
+  const who = a.who(r.session, null);
+  assert.equal(who?.account.name, "admin");
+  assert.equal(who?.limited, true);
+});
+
+test("a wrong password and an unknown name are refused alike", async () => {
+  const a = await fresh();
+  await assert.rejects(a.signIn("admin", "nope", true), refused(401));
+  await assert.rejects(a.signIn("nobody", "admin", true), refused(401));
+});
+
+test("changing the password ends the old sessions and lifts the limit; the first password is gone", async () => {
+  const a = await fresh();
+  const first = await a.signIn("admin", "admin", true);
+  const admin = a.byName("admin")!;
+  await assert.rejects(a.changePassword(admin, "admin", "short"), refused(400));
+  await assert.rejects(a.changePassword(admin, "admin", "admin-is-long-enough"), refused(400));   // holds its name
+  await assert.rejects(a.changePassword(admin, "wrong", "a good long password"), refused(401));
+  const r = await a.changePassword(admin, "admin", "a good long password");
+  assert.equal(a.who(first.session, null), null);
+  assert.equal(a.who(r.session, null)?.limited, false);
+  await assert.rejects(a.signIn("admin", "admin", true), refused(401));
+  const again = await a.signIn("admin", "a good long password", false);   // a chosen password works from anywhere
+  assert.equal(a.who(again.session, null)?.limited, false);
+});
+
+test("the admin makes a person with a one-time password, changed at the first sign-in", async () => {
+  const a = await fresh();
+  const admin = a.byName("admin")!;
+  const { account, secret } = await a.make(admin, "Ana", "person");
+  assert.equal(account.name, "ana");
+  assert.equal(account.mustChange, true);
+  assert.equal(account.first, false);
+  const s = await a.signIn("ana", secret, false);
+  assert.equal(a.who(s.session, null)?.limited, true);
+  await assert.rejects(a.make(admin, "ana", "person"), refused(409));
+  await assert.rejects(a.make(admin, "-x", "person"), refused(400));
+});
+
+test("an agent has a key, never a password, and is never an admin", async () => {
+  const a = await fresh();
+  const admin = a.byName("admin")!;
+  await assert.rejects(a.make(admin, "game", "agent", true), refused(400));
+  const { account, secret } = await a.make(admin, "game", "agent");
+  assert.match(secret, /^eud_/);
+  assert.equal(account.key, secret.slice(0, 8));
+  assert.equal(a.who(null, secret)?.account.name, "game");
+  await assert.rejects(a.signIn("game", secret, true), refused(401));
+  const renewed = await a.reset(admin, account.id);
+  assert.equal(a.who(null, secret), null);
+  assert.equal(a.who(null, renewed.secret)?.account.name, "game");
+  assert.throws(() => a.setAdmin(admin, account.id, true), refused(400));
+});
+
+test("only an admin does the admin's work, and there is always an admin", async () => {
+  const a = await fresh();
+  const admin = a.byName("admin")!;
+  const { account } = await a.make(admin, "ben", "person");
+  const ben = a.get(account.id)!;
+  await assert.rejects(a.make(ben, "cal", "person"), refused(403));
+  assert.throws(() => a.setDisabled(ben, admin.id, true), refused(403));
+  assert.throws(() => a.setDisabled(admin, admin.id, true), refused(400));
+  assert.throws(() => a.setAdmin(admin, admin.id, false), refused(400));
+  a.setAdmin(admin, ben.id, true);
+  a.setAdmin(ben, admin.id, false);   // ben is the admin now
+  assert.equal(a.get(admin.id)!.admin, false);
+});
+
+test("a closed account opens nothing", async () => {
+  const a = await fresh();
+  const admin = a.byName("admin")!;
+  const { account, secret } = await a.make(admin, "ops", "agent");
+  a.setDisabled(admin, account.id, true);
+  assert.equal(a.who(null, secret), null);
+  a.setDisabled(admin, account.id, false);
+  assert.equal(a.who(null, secret)?.account.name, "ops");
+});
+
+test("THE EASTER EGG's password is set by the admin and kept hashed", async () => {
+  const a = await fresh();
+  const admin = a.byName("admin")!;
+  assert.equal(a.egg().set, false);
+  assert.equal(await a.eggOpens("anything"), false);
+  await a.setEgg(admin, "a door in the wall");
+  assert.equal(a.egg().set, true);
+  assert.equal(await a.eggOpens("a door in the wall"), true);
+  assert.equal(await a.eggOpens("a door"), false);
+});
+
+test("sessions run out", async () => {
+  let t = Date.parse("2026-11-20T12:00:00Z");
+  const a = new Accounts(null, CHEAP, () => t);
+  await a.open();
+  const s = await a.signIn("admin", "admin", true);
+  t += 16 * 60 * 1000;   // a limited session lasts a quarter of an hour
+  assert.equal(a.who(s.session, null), null);
+});
+
+test("the file holds hashes only, and only its owner may read it", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "eudaimonia-"));
+  const file = join(dir, "eudaimonia", "accounts.json");
+  const a = new Accounts(file, CHEAP);
+  await a.open();
+  const s = await a.signIn("admin", "admin", true);
+  const { secret } = await a.make(a.byName("admin")!, "app", "agent");
+  const text = readFileSync(file, "utf8");
+  assert.ok(!text.includes(s.session) && !text.includes(secret));
+  const kept = JSON.parse(text);
+  assert.deepEqual(Object.keys(kept.accounts[0].password).sort(), ["hash", "n", "salt"]);
+  assert.equal(statSync(file).mode & 0o777, 0o600);
+  const b = new Accounts(file, CHEAP);   // read back
+  assert.equal(b.who(null, secret)?.account.name, "app");
+});
