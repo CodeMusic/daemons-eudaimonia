@@ -115,6 +115,13 @@ export class RedmineReader {
     return v;
   }
 
+  /** After an answer (answers.ts): forget what was read of that ticket, and the board, so the next look is fresh. */
+  forget(id: string) {
+    this.details.delete(id);
+    this.board_ = null;
+    this.laneViews.clear();
+  }
+
   /** E-6: one lane's page -- everything assigned to its Redmine user, open and closed, its ARETE counted from what it
    *  closed, and its own notes on its latest tickets. A minute's cache, the last one marked stale when Redmine is away. */
   async lane(name: string): Promise<LaneDetail | null> {

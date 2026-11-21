@@ -1,8 +1,8 @@
 # THE DASHBOARD
 
 **EUDAIMONIA's front door: the work under way, drawn as the daemons doing it.** Anyone who reaches the site sees it
-(port 4741, on this machine, a home network or the tailnet). It only reads; nothing on it changes a ticket yet. Every
-word of it is a DRAFT. This is its first slice (E-1).
+(port 4741, on this machine, a home network or the tailnet). The one thing it changes is a ticket that waits on the
+user, when a signed-in admin answers it. Every word of it is a DRAFT (E-1).
 
 ## What it shows
 
@@ -56,8 +56,32 @@ and if Redmine can't be reached the last reading stays up, marked with its age.
 **PRAXIS takes Redmine's place.** The design has the dashboard read from PRAXIS, with Redmine reaching it through the
 bridge's read-only mirror (the companion's C-434). When that is built, `src/redmine.ts` is the one file it replaces.
 
-**Next**: answering a waiting ticket from its modal, as a note in the user's name, its status moved back so its lane picks
-it up again.
+## Answering what waits on you
+
+**A ticket that waits on you is answered in its modal.** That is one that needs your decision, or is blocked on you.
+Sign in as an admin, and past the first password, and YOUR ANSWER appears under the ticket:
+
+- **Its choices**, as buttons, when the ticket gives some; and **your own words**, as well or instead.
+- **ANSWER** adds it to the ticket as a note, in the project's way of quoting you:
+  `**The user's answer** (*the user, 2026-11-21, on THE DASHBOARD*): **the choice** -- your words`.
+  It also moves the ticket back to **Ready**, so its lane picks it up again.
+- **It still waits on me** leaves only the note, and the ticket keeps waiting.
+
+Nobody else can answer, and nothing else on the page writes to Redmine (`src/answers.ts`).
+
+**Whose name a note is under.** Until your own Redmine key is on the server, the note is written as *Claude sessions*, and
+its words say it is yours (the user, 2026-11-21, by multiple choice). Once you add your Redmine account's API key to
+`~/.redmine.env` as `REDMINE_KEY_USER=…`, every answer after that is under your own account. Restart the site after
+adding it.
+
+**How a lane gives you choices.** From DAEMONS, a lane puts the question with its choices:
+
+```sh
+python3 tools/tickets.py ask T-581 --lane game --question "Which way?" --choice "One way" --choice "The other"
+```
+
+The ticket moves to *Needs decision* and gets a note with a `Choices:` line and a list under it, which the dashboard draws
+as buttons, at most eight of them. A ticket written by hand can do the same.
 
 ## For whoever runs it
 
@@ -69,3 +93,4 @@ it up again.
 | `GET /api/release/<name>` | one release's notes |
 | `GET /release/<group>/notes.pdf` | a sealed group's notes |
 | `GET /art/player.png` | the player's picture, from the companion's art |
+| `POST /api/ticket/<id>/answer {text, choice?, keep?}` | an admin's answer to a ticket that waits on the user |

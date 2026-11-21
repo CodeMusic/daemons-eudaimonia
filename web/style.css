@@ -187,6 +187,16 @@ dialog.full .full-link { display: none; }
 .fields dd { margin: 0; min-width: 0; }
 .fields dd p { margin: 0; }
 .note { border-left: 2px solid var(--line); padding: 2px 0 2px 12px; margin: 10px 0; font-size: 14px; }
+/* answering a ticket that waits on the user (E-1's second slice) */
+.answer { margin: 18px 0; padding: 14px; background: var(--bg); border: 1px solid rgb(224 122 95 / .45); border-radius: 12px; }
+.answer h3 { margin-top: 0; color: var(--bad); }
+.answer p { margin: 4px 0; }
+.choices { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 4px; }
+.choice-btn { text-align: left; letter-spacing: 0; padding: 10px 12px; background: var(--panel); }
+.choice-btn[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.answer textarea { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; background: var(--panel); color: var(--text);
+                   border: 1px solid var(--line); border-radius: 8px; font: inherit; resize: vertical; }
+.answered { margin: 18px 0; padding: 12px 14px; border-radius: 10px; background: rgb(129 178 154 / .12); color: var(--ok); }
 
 /* THE EASTER EGG (C-437, E-7): a dim egg in THE RELEASES' corner, its door's riddle, and the carts it asks about */
 .egg-spot { position: absolute; right: 10px; bottom: 8px; padding: 4px; border: 0; background: none; opacity: .22;

@@ -3,8 +3,9 @@
 // it has a ticket in progress and asleep when it has none; what waits on the user is drawn with the player, the
 // monkey; and the releases, each opening what it changed. Nothing leaves the page: a lane, a ticket or a release opens
 // in a modal, with FULL VIEW for a new tab (/#ticket=T-465, /#release=v11.411.1, /#lane=game); a lane's is its daemon's
-// own page (E-6): where it works, its ARETE, its work and its history. Read-only: answering a
-// waiting ticket is the next slice. Every word DRAFT.
+// own page (E-6): where it works, its ARETE, its work and its history. The one thing it changes: a signed-in admin
+// ANSWERS a ticket that waits on the user from its modal -- a choice where the ticket gives them, their own words, and
+// it goes back to its lane (answers.ts). Every word DRAFT.
 import { $, api, el } from "./ui.js";
 import { md, inline } from "./md.js";
 import { whoami as me, pickDaemon, showSecret } from "./app.js";
@@ -187,7 +188,47 @@ async function giveDaemon(l) {
   openLane(l.lane);
 }
 
+/** A waiting ticket's answer: its choices as buttons, the user's own words, and whether it still waits on them. */
+function answerForm(t) {
+  const who = me();
+  if (!t.answerable) return el("p", { class: "dim small" }, "Answering is off here: this site has no key to answer with.");
+  if (!who) return el("div", { class: "answer" }, el("h3", {}, "YOUR ANSWER"),
+    el("p", { class: "dim" }, "It waits on you. Sign in to answer it here. ",
+       el("button", { class: "link", onclick: () => $("signin-open").click() }, "Sign in")));
+  if (!who.admin || who.mustChange) return null;
+  let chosen = null;
+  const choices = el("div", { class: "choices", role: "group", "aria-label": "Its choices" }, t.choices.map((c) =>
+    el("button", { type: "button", class: "choice-btn", "aria-pressed": "false", "data-c": c, onclick: () => {
+      chosen = chosen === c ? null : c;
+      for (const b of choices.children) b.setAttribute("aria-pressed", String(b.dataset.c === chosen));
+    } }, inline(c))));
+  const form = el("form", { class: "answer" },
+    el("h3", {}, "YOUR ANSWER"),
+    t.choices.length ? choices : null,
+    el("label", {}, t.choices.length ? "In your own words, if you like" : "In your own words",
+       el("textarea", { name: "text", rows: 4, maxlength: 4000 })),
+    el("label", { class: "check" }, el("input", { type: "checkbox", name: "keep" }), "It still waits on me (a note only)"),
+    el("p", { class: "error", role: "alert" }),
+    el("div", { class: "actions" }, el("button", { class: "primary" }, "ANSWER")));
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const b = form.querySelector("button.primary"), err = form.querySelector(".error");
+    err.textContent = "";
+    if (!chosen && !form.text.value.trim()) { err.textContent = t.choices.length ? "Choose one, or write your answer." : "Write your answer."; return; }
+    b.disabled = true;
+    try {
+      const r = await api("POST", `/api/ticket/${encodeURIComponent(t.id)}/answer`, { text: form.text.value, choice: chosen, keep: form.keep.checked });
+      form.replaceWith(el("p", { class: "answered" }, r.status === "Ready" ? "Answered. It is back with its lane, Ready." : "Your note is on it. It still waits on you."));
+      await load();
+      setTimeout(() => { if ($("ticket").open && shown === t.id) openTicket(t.id); }, 1200);
+    } catch (e) { err.textContent = e.message; b.disabled = false; }
+  });
+  return form;
+}
+
+let shown = null;   // the ticket the modal shows
 async function openTicket(id) {
+  shown = id;
   $("ticket-title").textContent = id;
   $("ticket-body").replaceChildren(el("p", { class: "dim" }, "Reading it…"));
   show("ticket", `#ticket=${id}`);
@@ -200,6 +241,7 @@ async function openTicket(id) {
         .filter(Boolean).join(" · ")),
       el("div", { class: "md" }, md(t.description)),
       t.fields.length ? el("dl", { class: "fields" }, t.fields.flatMap((f) => [el("dt", {}, f.name.toUpperCase()), el("dd", {}, md(f.value))])) : null,
+      t.waiting ? answerForm(t) : null,
       t.notes.length ? el("h3", {}, "LATEST NOTES") : null,
       ...t.notes.map((n) => el("article", { class: "note" }, el("small", { class: "dim" }, `${n.by} · ${ago(n.at)}`), el("div", { class: "md" }, md(n.text))))]
       .filter(Boolean));
@@ -257,4 +299,4 @@ fromHash();
 addEventListener("hashchange", fromHash);
 setInterval(() => { if (document.visibilityState === "visible") load().catch(() => {}); }, REFRESH_MS);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && board && Date.now() - new Date(board.at) > REFRESH_MS) load(); });
-document.addEventListener("me", () => draw());
+document.addEventListener("me", () => { draw(); if ($("ticket").open && shown) openTicket(shown); });   // signed in: the answer appears

@@ -21,6 +21,7 @@
 //   GET  /api/board                  the lanes at work, what waits on the user, each project's progress (redmine.ts)
 //   GET  /api/ticket/<T-n|C-n|E-n>   one ticket: its words, fields and last notes, for its modal
 //   GET  /api/releases               every release, newest first   GET /api/release/<name>   one release's notes
+//   POST /api/ticket/<id>/answer {text, choice?, keep?}   (an admin) answer a ticket that waits on the user (answers.ts)
 //   GET  /release/<group>/notes.pdf  a sealed group's notes          GET /art/player.png       the player, the monkey
 //
 // An agent calls the API with `Authorization: Bearer <its key>`; a person's browser with the session cookie. A POST
@@ -32,7 +33,8 @@ import { extname, join } from "node:path";
 import { type Account, type Accounts, type Kind, Refused, shown } from "./accounts.ts";
 import type { Avatars } from "./avatars.ts";
 import { type Egg, isEdition } from "./egg.ts";
-import { type RedmineReader, TICKET_ID } from "./redmine.ts";
+import { type RedmineReader, TICKET_ID, waitsOnUser } from "./redmine.ts";
+import { type Answers, ticketChoices } from "./answers.ts";
 import type { Releases } from "./releases.ts";
 import { allowed, home, ourHost } from "./reach.ts";
 
@@ -48,7 +50,9 @@ const HEADERS = {
 export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?: (line: string) => void; now?: () => number;
                         egg?: Egg; player?: number;
                         /** E-1: the tickets (null: no key to read them with), the releases, the companion's art folder */
-                        redmine?: RedmineReader | null; releases?: Releases; art?: string };
+                        redmine?: RedmineReader | null; releases?: Releases; art?: string;
+                        /** E-1's second slice: the one write, answering a ticket that waits on the user (null: no key) */
+                        answers?: Answers | null };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -164,7 +168,8 @@ export function makeServer(o: Options): Server {
       if (!o.redmine) throw new Refused("This site has no key to read the tickets with.", 503);
       const t = TICKET_ID.test(ticket[1]) ? await o.redmine.ticket(ticket[1]) : null;
       if (!t) throw new Refused(`No ticket ${ticket[1]} here.`, 404);
-      return json(res, { ticket: t });
+      const waiting = waitsOnUser(t.status, t.fields.find((f) => f.name === "Blocked on")?.value ?? null);
+      return json(res, { ticket: { ...t, waiting, choices: waiting ? ticketChoices(t) : [], answerable: !!o.answers } });
     }
     const lane = /^\/api\/lane\/([a-z0-9-]{1,20})$/.exec(path);
     if (lane && method === "GET") {
@@ -245,6 +250,17 @@ export function makeServer(o: Options): Server {
       else if (action === "avatar") r = { account: o.accounts.adminAvatar(me, id, avatar(body.avatar)) };
       else throw new Refused("No such action.");
       log(`${addr} ${me.name}: ${action} ${o.accounts.get(id)?.name}`);
+      return json(res, r);
+    }
+
+    const answer = /^\/api\/ticket\/([A-Z]-[0-9]+)\/answer$/.exec(path);
+    if (answer && method === "POST") {
+      if (!me.admin || me.kind !== "person") throw new Refused("Only an admin can answer a ticket.", 403);
+      if (!o.answers) throw new Refused("This site has no key to answer with.", 503);
+      const r = await o.answers.answer(answer[1], { text: String(body.text ?? ""), keep: body.keep === true,
+                                                     choice: body.choice == null ? null : String(body.choice) });
+      o.redmine?.forget(answer[1]);
+      log(`${addr} ${me.name} answered ${r.ticket}${body.keep === true ? ", which still waits on the user" : `: back to ${r.status}`}`);
       return json(res, r);
     }
 

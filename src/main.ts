@@ -12,6 +12,8 @@
 // $EUDAIMONIA_EGG, or the one in DAEMONS' private note on it (docs/private/, in no repository), kept only as a hash
 // and read again at every start until the admin sets their own in ACCOUNTS. THE DASHBOARD (E-1) reads the tickets from
 // Redmine with the playground lane's key, from ~/.redmine.env (or $REDMINE_ENV): never logged, never sent to a page.
+// An admin answers a ticket that waits on the user with the user's own Redmine key there, REDMINE_KEY_USER, or until
+// the user adds it, the sessions' REDMINE_API_KEY (E-1).
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
@@ -21,6 +23,7 @@ import { Accounts } from "./accounts.ts";
 import { Avatars } from "./avatars.ts";
 import { Egg, firstEggPassword } from "./egg.ts";
 import { RedmineReader, redmineEnv } from "./redmine.ts";
+import { Answers, answersEnv } from "./answers.ts";
 import { Releases } from "./releases.ts";
 import { makeServer } from "./server.ts";
 
@@ -59,11 +62,16 @@ const rm = existsSync(envFile) ? redmineEnv(readFileSync(envFile, "utf8")) : nul
 const redmine = rm ? new RedmineReader(rm.url, rm.key) : null;
 say(redmine ? `THE DASHBOARD reads the tickets from ${rm!.url}, read-only, as the playground lane`
             : `THE DASHBOARD has no tickets: no REDMINE_URL and REDMINE_KEY_PLAYGROUND in ${envFile}`);
+const aw = existsSync(envFile) ? answersEnv(readFileSync(envFile, "utf8")) : null;
+const answers = aw ? new Answers(aw.url, aw.key, { as: aw.as }) : null;
+say(!answers ? `nobody can answer from THE DASHBOARD: neither REDMINE_KEY_USER nor REDMINE_API_KEY in ${envFile}`
+    : aw!.whose === "user" ? `an admin answers what waits on the user in the user's own Redmine account (REDMINE_KEY_USER)`
+    : `an admin answers what waits on the user as Claude sessions, the note naming the user, until REDMINE_KEY_USER is added`);
 const latest = egg.latest();
 say(latest ? `THE EASTER EGG's carts play ${latest.name}, in the playground's player on port ${PLAYER}` : `no release in ${RELEASES}: the egg's carts have nothing to play`);
 
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
-                           redmine, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
+                           redmine, answers, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

@@ -11,15 +11,18 @@ the DAEMONS playground until 2026-11-20, and it still serves that beside the sit
 **Its first pieces answer on port 4741**: **THE DASHBOARD**, the work under way drawn as the daemons doing it, and
 **SIGN IN** beside it, with the accounts behind it. Every word on it is a DRAFT.
 
-- **THE DASHBOARD** (E-1's first slice, read-only, for anyone who reaches the site). Each project's progress; **THE
+- **THE DASHBOARD** (E-1, for anyone who reaches the site). Each project's progress; **THE
   LANES**, each drawn with its daemon at a keyboard while it has a ticket in progress and asleep when it has none, with
   what it is at, what is next and what it closed lately; **WAITING ON YOU**, drawn with the player, the monkey, for every
   ticket that needs the user's decision; and **THE RELEASES**, each opening its notes. A lane, a ticket or a release
   opens in a modal, and FULL VIEW opens it alone in a new tab (`/#ticket=T-465`, `/#release=v11.411.1`, `/#lane=game`).
   For now it reads the tickets from Redmine, read-only and a minute at a time, with the playground lane's key in
   `~/.redmine.env`; PRAXIS's bridge (the companion's C-434) is to take its place. A lane's daemon is its agent account's
-  avatar: an admin gives one from the lane's modal. Answering a waiting ticket from the dashboard comes next
-  (`src/redmine.ts`, `src/releases.ts`, `web/dashboard.js`).
+  avatar: an admin gives one from the lane's modal. **A signed-in admin answers a ticket that waits on the user from
+  its modal**: its choices as buttons (a lane gives them with DAEMONS' `tools/tickets.py ask`), the user's own words,
+  a note in the project's way of quoting the user, and the ticket back to Ready for its lane. That is the site's only
+  write to Redmine. It uses the user's own key, `REDMINE_KEY_USER` in `~/.redmine.env`, once it is added there, and
+  the sessions' key until then (`src/redmine.ts`, `src/answers.ts`, `src/releases.ts`, `web/dashboard.js`).
 
 - **The first sign-in is `admin` / `admin`, and it is changed at once.** Until it is, that password is taken only from
   this machine, a home network or the tailnet, with no proxy between, and the session it opens can do nothing but
