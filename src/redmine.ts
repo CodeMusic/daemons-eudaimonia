@@ -17,12 +17,18 @@ export const LANES = ["game", "story", "audio", "art", "app", "hub", "esp32", "p
 /** The fields a ticket's modal shows, in this order (tools/tickets.py's FIELD_NAMES, less its bookkeeping). */
 const SHOWN = ["State", "Blocked on", "Why not yet", "See", "Where", "From", "Commits", "Branch", "Closed by"];
 export const TICKET_ID = /^[TCE]-\d{1,5}$/;
+/** E-6, DRAFT: ARETE a lane earns for a ticket it finished, by the ticket's kind (Redmine's tracker), paid once per
+ *  close and never taken back for a quiet day -- PRAXIS's rule (companion docs/PROJECTS.md 6) on Redmine's tickets until
+ *  the bridge (C-434) brings PRAXIS's own ledger, and these numbers with it. */
+export const ARETE_DRAFT: Record<string, number> = { Job: 5, Bug: 3 };
+export const ARETE_OTHER = 2;
+const LEDGER_MOST = 25, HISTORY_TICKETS = 10, HISTORY_MOST = 20, DONE_PAGE = 10, WEEK_MS = 7 * 86400 * 1000;
 const TTL_MS = 60 * 1000, TIMEOUT_MS = 15 * 1000, CLOSED_RECENT = 100, NEXT_MOST = 5, DONE_MOST = 3;
 
 type Field = { id: number; name: string; value: string | null };
 type Issue = {
   id: number; subject: string; description?: string | null; project: { id: number; name: string };
-  status: { id: number; name: string }; assigned_to?: { id: number; name: string };
+  status: { id: number; name: string }; tracker?: { id: number; name: string }; assigned_to?: { id: number; name: string };
   custom_fields?: Field[]; updated_on: string; closed_on?: string | null; created_on: string;
   journals?: { user: { name: string }; notes?: string | null; created_on: string }[];
 };
@@ -32,6 +38,14 @@ export type Ticket = { id: string; project: string; title: string; status: strin
 export type Detail = Ticket & { description: string; fields: { name: string; value: string }[];
                                 notes: { at: string; by: string; text: string }[] };
 export type LaneView = { lane: string; working: Ticket[]; next: Ticket[]; done: Ticket[]; open: number; last: string | null };
+/** E-6: what a lane's own page shows -- a daemon employee's profile, work, ARETE and history. */
+export type LaneDetail = {
+  lane: string; at: string; stale: boolean; since: string | null;
+  projects: { ident: string; name: string; open: number; working: number; closed: number }[];
+  working: Ticket[]; next: Ticket[]; waiting: Ticket[]; done: Ticket[];
+  arete: { total: number; week: number; tickets: number; ledger: (Ticket & { kind: string; points: number })[] };
+  history: { at: string; ticket: string; title: string; text: string }[];
+};
 export type Board = {
   at: string; stale: boolean;
   projects: { ident: string; name: string; open: number; closed: number; working: number }[];
@@ -58,6 +72,8 @@ export class RedmineReader {
   private board_: { at: number; v: Board } | null = null;
   private pending: Promise<Board> | null = null;
   private details = new Map<string, { at: number; v: Detail | null }>();
+  private laneUsers: Map<string, number> | null = null;
+  private laneViews = new Map<string, { at: number; v: LaneDetail }>();
 
   constructor(url: string, key: string, o: { fetch?: typeof fetch; now?: () => number } = {}) {
     this.url = url.replace(/\/+$/, ""); this.key = key;
@@ -99,6 +115,22 @@ export class RedmineReader {
     return v;
   }
 
+  /** E-6: one lane's page -- everything assigned to its Redmine user, open and closed, its ARETE counted from what it
+   *  closed, and its own notes on its latest tickets. A minute's cache, the last one marked stale when Redmine is away. */
+  async lane(name: string): Promise<LaneDetail | null> {
+    if (!(LANES as readonly string[]).includes(name)) return null;
+    const hit = this.laneViews.get(name);
+    if (hit && this.now() - hit.at < TTL_MS) return hit.v;
+    try {
+      const v = await this.readLane(name);
+      if (v) this.laneViews.set(name, { at: this.now(), v });
+      return v;
+    } catch (e) {
+      if (hit) return { ...hit.v, stale: true };
+      throw e instanceof Refused ? e : new Refused("The tickets can't be read just now.", 503);
+    }
+  }
+
   // ---- inside ---------------------------------------------------------------------------------------------------------
 
   private async read(): Promise<Board> {
@@ -136,6 +168,65 @@ export class RedmineReader {
     const waiting = open.filter((t) => waitsOnUser(t.status, blockedOn.get(t.id) ?? null))
       .sort((a, b) => b.updated.localeCompare(a.updated));
     return { at: new Date(this.now()).toISOString(), stale: false, projects, lanes, waiting };
+  }
+
+  private async readLane(name: string): Promise<LaneDetail | null> {
+    const ids = await this.projects(), user = (await this.users()).get(name);
+    if (user == null) return null;
+    const all = async (status: string, sort: string) => {
+      const out: Issue[] = [];
+      for (let offset = 0; ; offset += 100) {
+        const r = await this.get<{ issues: Issue[]; total_count: number }>(
+          `/issues.json?assigned_to_id=${user}&status_id=${status}&sort=${sort}&limit=100&offset=${offset}`);
+        out.push(...r.issues.filter((i) => ids.has(i.project.id)));
+        if (offset + 100 >= r.total_count || !r.issues.length) break;
+      }
+      return out;
+    };
+    const openI = await all("open", "updated_on:desc"), closedI = (await all("closed", "closed_on:desc"))
+      .sort((a, b) => (b.closed_on ?? "").localeCompare(a.closed_on ?? ""));
+    const open = openI.map((i) => this.ticketOf(i, ids)), closed = closedI.map((i) => this.ticketOf(i, ids));
+    const byOrder = (a: Ticket, b: Ticket) => (a.order ?? 1e9) - (b.order ?? 1e9) || a.id.localeCompare(b.id, "en", { numeric: true });
+    const pay = (i: Issue) => ARETE_DRAFT[i.tracker?.name ?? ""] ?? ARETE_OTHER;
+    const ledger = closedI.map((i) => ({ ...this.ticketOf(i, ids), kind: i.tracker?.name ?? "", points: pay(i) }));
+    const weekAgo = new Date(this.now() - WEEK_MS).toISOString();
+    // Its own words: the notes it wrote on its latest tickets, newest first.
+    const latest = [...openI, ...closedI].sort((a, b) => b.updated_on.localeCompare(a.updated_on)).slice(0, HISTORY_TICKETS);
+    const history: LaneDetail["history"] = [];
+    for (const i of latest) {
+      const full = (await this.get<{ issue: Issue }>(`/issues/${i.id}.json?include=journals`)).issue, t = this.ticketOf(full, ids);
+      for (const j of full.journals ?? [])
+        if (j.notes?.trim() && laneOf(j.user.name) === name) history.push({ at: j.created_on, ticket: t.id, title: t.title, text: j.notes });
+    }
+    history.sort((a, b) => b.at.localeCompare(a.at));
+    return {
+      lane: name, at: new Date(this.now()).toISOString(), stale: false,
+      since: [...openI, ...closedI].map((i) => i.created_on).sort()[0] ?? null,
+      projects: PROJECTS.map((p) => {
+        const mine = (t: Ticket) => t.project === p.ident;
+        return { ident: p.ident, name: p.name, open: open.filter(mine).length, closed: closed.filter(mine).length,
+                 working: open.filter((t) => mine(t) && t.status === "In progress").length };
+      }).filter((p) => p.open + p.closed),
+      working: open.filter((t) => t.status === "In progress"),
+      next: open.filter((t) => t.status === "Ready").sort(byOrder),
+      waiting: open.filter((t) => t.status !== "In progress" && t.status !== "Ready"),
+      done: closed.slice(0, DONE_PAGE),
+      arete: { total: ledger.reduce((a, l) => a + l.points, 0), tickets: ledger.length,
+               week: ledger.filter((l) => (l.closed ?? "") >= weekAgo).reduce((a, l) => a + l.points, 0),
+               ledger: ledger.slice(0, LEDGER_MOST) },
+      history: history.slice(0, HISTORY_MOST),
+    };
+  }
+
+  /** Each lane's Redmine user, from the DAEMONS project's members (a lane's key can read those, not /users). */
+  private async users() {
+    if (!this.laneUsers) {
+      const m = new Map<string, number>();
+      const r = await this.get<{ memberships: { user?: { id: number; name: string } }[] }>(`/projects/${PROJECTS[0].ident}/memberships.json?limit=100`);
+      for (const x of r.memberships) { const l = laneOf(x.user?.name); if (l && x.user) m.set(l, x.user.id); }
+      this.laneUsers = m;
+    }
+    return this.laneUsers;
   }
 
   private ticketOf(i: Issue, ids: Map<number, string>): Ticket {

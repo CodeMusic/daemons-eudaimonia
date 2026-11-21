@@ -2,7 +2,8 @@
 // 2026-11-21, by multiple choice). Each lane is drawn with its daemon (its agent account's avatar), at a keyboard while
 // it has a ticket in progress and asleep when it has none; what waits on the user is drawn with the player, the
 // monkey; and the releases, each opening what it changed. Nothing leaves the page: a lane, a ticket or a release opens
-// in a modal, with FULL VIEW for a new tab (/#ticket=T-465, /#release=v11.411.1, /#lane=game). Read-only: answering a
+// in a modal, with FULL VIEW for a new tab (/#ticket=T-465, /#release=v11.411.1, /#lane=game); a lane's is its daemon's
+// own page (E-6): where it works, its ARETE, its work and its history. Read-only: answering a
 // waiting ticket is the next slice. Every word DRAFT.
 import { $, api, el } from "./ui.js";
 import { md, inline } from "./md.js";
@@ -112,25 +113,61 @@ function show(id, hash) {
 for (const id of ["lane", "ticket", "release"])
   $(id).addEventListener("close", () => { if (location.hash) history.replaceState(null, "", location.pathname); $(id).classList.remove("full"); });
 
-function openLane(name) {
+/** A lane's own page (E-6, the user 2026-11-21 by multiple choice): the daemon employee's profile, its work, its ARETE
+ *  and its history. It opens at once from the board's tile, then fills from /api/lane/<lane>. Every word DRAFT. */
+async function openLane(name) {
   const l = board?.lanes.find((x) => x.lane === name);
-  if (!l) return;
-  $("lane-scene").replaceChildren(el("span", { class: `scene ${l.working.length ? "working" : "asleep"}` }, sprite(l.daemon), keyboard()));
-  $("lane-title").textContent = (l.daemonName ?? l.lane).toUpperCase();
-  $("lane-line").textContent = `The ${l.lane} lane${l.last ? ` · last moved ${ago(l.last)}` : ""}`;
-  const section = (title, list, empty) => [el("h3", {}, title),
-    list.length ? el("ul", { class: "tickets" }, list.map((t) => ticketRow(t))) : el("p", { class: "dim" }, empty)];
-  $("lane-body").replaceChildren(
-    ...section("AT WORK", l.working, "Nothing in progress: it is asleep."),
-    ...section("NEXT", l.next, "Nothing ready for it."),
-    ...section("LATELY DONE", l.done.map((t) => ({ ...t, status: `closed ${day(t.closed)}` })), "Nothing closed lately."));
+  if (!l && !board) return;
+  const head = (v) => {
+    $("lane-scene").replaceChildren(el("span", { class: `scene big ${v.working.length ? "working" : "asleep"}` }, sprite(v.daemon, 96), keyboard()));
+    $("lane-title").textContent = (v.daemonName ?? v.lane).toUpperCase();
+    $("lane-line").textContent = [`The ${v.lane} lane`, v.since && `on the tickets since ${day(v.since)}`, v.last && `last moved ${ago(v.last)}`,
+      v.stale && "the tickets can't be reached: as they last stood"].filter(Boolean).join(" · ");
+  };
+  if (l) head(l);
+  $("lane-body").replaceChildren(el("p", { class: "dim" }, "Reading its page…"));
   const admin = me()?.admin && !me()?.mustChange;
-  $("lane-admin").hidden = !admin;
-  if (admin) {
+  $("lane-admin").hidden = !admin || !l;
+  if (admin && l) {
     $("lane-admin").replaceChildren(el("button", { onclick: () => giveDaemon(l) }, l.account ? "ANOTHER DAEMON FOR IT" : "GIVE IT A DAEMON"),
       el("small", { class: "dim" }, l.account ? ` Its agent account, ${l.lane}, carries it.` : ` An agent account called ${l.lane} is made to carry it.`));
   }
-  show("lane", `#lane=${l.lane}`);
+  show("lane", `#lane=${name}`);
+  let v;
+  try { ({ lane: v } = await api("GET", `/api/lane/${encodeURIComponent(name)}`)); }
+  catch (e) { $("lane-body").replaceChildren(el("p", { class: "error" }, e.message)); return; }
+  head({ ...v, last: l?.last });
+  const section = (title, list, empty, extra) => [el("h3", {}, title),
+    list.length ? el("ul", { class: "tickets" }, list.map((t) => ticketRow(t, extra?.(t)))) : el("p", { class: "dim" }, empty)];
+  const projects = el("div", { class: "staff-projects" }, ...v.projects.map((p) => {
+    const all = p.open + p.closed, pc = all ? Math.round((100 * p.closed) / all) : 0;
+    const bar = el("span", { class: "bar", role: "img", "aria-label": `${pc}% of its tickets here closed` }, el("span", {}));
+    bar.firstChild.style.width = `${pc}%`;
+    return el("div", { class: "project" }, el("b", {}, p.name), bar,
+      el("small", { class: "dim" }, `${p.closed} done · ${p.open} open${p.working ? ` · ${p.working} at work` : ""}`));
+  }));
+  const ar = v.arete;
+  const arete = el("div", { class: "arete" },
+    el("p", { class: "arete-sum" }, el("b", {}, String(ar.total)), el("span", {}, " ARETE"),
+      el("small", { class: "dim" }, ` · ${ar.week} this week · from ${plural(ar.tickets, "ticket")} finished`)),
+    el("p", { class: "dim small" }, "A job finished earns 5, a fix 3, paid once and never taken back. Counted from the tickets until PRAXIS keeps its own ledger."),
+    ar.ledger.length ? el("ul", { class: "ledger" }, ar.ledger.map((t) => el("li", {}, el("button", { class: "link", onclick: () => openTicket(t.id), title: t.title }, t.id),
+        el("span", { class: "ttl dim" }, t.title), el("b", { class: "pts" }, `+${t.points}`), el("small", { class: "dim" }, day(t.closed)))))
+      : el("p", { class: "dim" }, "Nothing finished yet: nothing earned, and nothing lost."));
+  const history = v.history.length ? el("ol", { class: "history" }, v.history.map((h) => el("li", {},
+    el("small", { class: "dim" }, `${ago(h.at)} · `, el("button", { class: "link", onclick: () => openTicket(h.ticket) }, h.ticket), ` ${h.title}`),
+    el("div", { class: "md" }, md(h.text.length > 600 ? h.text.slice(0, 600) + "…" : h.text)))))
+    : el("p", { class: "dim" }, "It has written nothing on its tickets yet.");
+  $("lane-body").replaceChildren(el("div", { class: "staff" },
+    el("section", { class: "staff-side" }, el("h3", {}, "WHERE IT WORKS"),
+      v.projects.length ? projects : el("p", { class: "dim" }, "No ticket has been given to it yet."),
+      el("h3", {}, "ITS ARETE"), arete),
+    el("section", { class: "staff-main" },
+      ...section("AT WORK", v.working, "Nothing in progress: it is asleep."),
+      ...section("NEXT", v.next, "Nothing ready for it."),
+      ...(v.waiting.length ? section("WAITING", v.waiting, "") : []),
+      ...section("LATELY DONE", v.done, "Nothing finished yet.", (t) => el("span", { class: "tag" }, `CLOSED ${day(t.closed).toUpperCase()}`)),
+      el("h3", {}, "ITS HISTORY"), history)));
 }
 
 /** The admin picks a lane's daemon: its agent account's avatar, the account made if there is none yet. */

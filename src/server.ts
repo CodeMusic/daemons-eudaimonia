@@ -17,6 +17,7 @@
 //   POST /api/egg/rom {edition, agreed}       the release's own ROM: with the pass, and the backups ticked
 //
 // THE DASHBOARD (E-1), for anyone who reaches the site (the user, 2026-11-21, by multiple choice) -- read-only:
+//   GET  /api/lane/<lane>            one lane's page: a daemon employee's work, ARETE and history (E-6, redmine.ts)
 //   GET  /api/board                  the lanes at work, what waits on the user, each project's progress (redmine.ts)
 //   GET  /api/ticket/<T-n|C-n|E-n>   one ticket: its words, fields and last notes, for its modal
 //   GET  /api/releases               every release, newest first   GET /api/release/<name>   one release's notes
@@ -164,6 +165,15 @@ export function makeServer(o: Options): Server {
       const t = TICKET_ID.test(ticket[1]) ? await o.redmine.ticket(ticket[1]) : null;
       if (!t) throw new Refused(`No ticket ${ticket[1]} here.`, 404);
       return json(res, { ticket: t });
+    }
+    const lane = /^\/api\/lane\/([a-z0-9-]{1,20})$/.exec(path);
+    if (lane && method === "GET") {
+      if (!o.redmine) throw new Refused("This site has no key to read the tickets with.", 503);
+      const l = await o.redmine.lane(lane[1]);
+      if (!l) throw new Refused(`No lane ${lane[1]} here.`, 404);
+      const agents = o.accounts.agents(), daemon = agents.get(l.lane) ?? null;
+      return json(res, { lane: { ...l, account: agents.has(l.lane), daemon,
+                                 daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null } });
     }
     if (path === "/api/releases" && method === "GET") return json(res, { releases: o.releases?.list() ?? [] });
     const release = /^\/api\/release\/(v[0-9]+\.[0-9]+\.(?:[0-9]+|x))$/.exec(path);
