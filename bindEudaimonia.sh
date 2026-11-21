@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# daemons-eudaimonia: EUDAIMONIA's first pieces, on port 4741 -- the front page's frame, sign-in and the accounts
-# (C-439, C-436) -- beside the DAEMONS playground on 4740: the game in a browser, the companion beside it, what's new in
-# each release.
+# daemons-eudaimonia: EUDAIMONIA's first pieces, on port 4741 -- the front page's frame, sign-in and the accounts, and
+# THE EASTER EGG (C-439, C-436, C-437) -- beside the DAEMONS playground on 4740: the game in a browser, the companion
+# beside it, what's new in each release. The egg's carts play in the playground's player.
 #
 #   ./bindEudaimonia.sh                 both: the playground (the latest ROM RELEASE) and EUDAIMONIA
 #   ./bindEudaimonia.sh --build         the playground plays DAEMONS' engineGba build instead
@@ -94,6 +94,8 @@ fi
 # again, as before. EUDAIMONIA is new: when it stops, it starts again by itself ten seconds later, and the playground
 # never notices.
 pg="" site=""
+# THE EASTER EGG's carts play in the playground's player: the site is told which port that is
+prev=""; for a in "$@"; do [[ "$prev" == "--port" ]] && export PLAYGROUND_PORT="$a"; prev="$a"; done
 trap 'kill $pg $site 2>/dev/null || true; wait 2>/dev/null || true; exit 0' INT TERM
 python3 server/playground.py "$@" & pg=$!
 "$NODE" src/main.ts & site=$!

@@ -2,7 +2,7 @@
   "name": "daemons-eudaimonia",
   "version": "0.1.0",
   "private": true,
-  "description": "EUDAIMONIA: the site where the companion's PRAXIS and ARETE are used together. Its first pieces: the front page's frame, sign-in and accounts.",
+  "description": "EUDAIMONIA: the site where the companion's PRAXIS and ARETE are used together. Its first pieces: the front page's frame, sign-in and accounts, and THE EASTER EGG.",
   "type": "module",
   "engines": {
     "node": ">=22.18"

@@ -10,17 +10,24 @@
 //   POST /api/accounts/<id>      (admin) {action: reset | disable | enable | admin | member | avatar, avatar?}
 //   GET  /api/egg  POST /api/egg {password}   (admin) THE EASTER EGG's password: set or not, and when
 //
+// THE EASTER EGG (C-437, egg.ts), for anyone who finds it -- no sign-in:
+//   POST /api/egg/open {password}             its door: a pass for this browser, as the cookie eudaimonia-egg
+//   GET  /api/egg/carts                       the release, the two carts and the patches that make them, the player's port
+//   GET  /egg/patch/<release>/<file>.bps      a release's BPS patch, for a player's own cart (published anyway)
+//   POST /api/egg/rom {edition, agreed}       the release's own ROM: with the pass, and the backups ticked
+//
 // An agent calls the API with `Authorization: Bearer <its key>`; a person's browser with the session cookie. A POST
 // from a browser must come from a page of this site (its Origin is this Host), as JSON -- another site's page cannot
 // sign anyone in, out or anywhere else.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { readFileSync, existsSync } from "node:fs";
+import { createReadStream, readFileSync, existsSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { type Account, type Accounts, type Kind, Refused, shown } from "./accounts.ts";
 import type { Avatars } from "./avatars.ts";
+import { type Egg, isEdition } from "./egg.ts";
 import { allowed, home, ourHost } from "./reach.ts";
 
-export const COOKIE = "eudaimonia";
+export const COOKIE = "eudaimonia", EGG_COOKIE = "eudaimonia-egg";
 const BODY_MOST = 16 * 1024, FAILS_MOST = 8, FAILS_WINDOW_MS = 15 * 60 * 1000;
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
                                         ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml" };
@@ -29,7 +36,8 @@ const HEADERS = {
   "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
 };
 
-export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?: (line: string) => void; now?: () => number };
+export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?: (line: string) => void; now?: () => number;
+                        egg?: Egg; player?: number };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -37,6 +45,9 @@ export function makeServer(o: Options): Server {
   const log = o.log ?? ((l: string) => console.log("eudaimonia: " + l));
   const now = o.now ?? (() => Date.now());
   const fails = new Map<string, number[]>();
+  // the front page frames the playground's page, on this same host, as THE EASTER EGG's player (egg.js)
+  const port = o.player ?? 4740;
+  const page = { "Content-Security-Policy": HEADERS["Content-Security-Policy"] + `; frame-src http://*:${port} https://*:${port}` };
 
   const failed = (addr: string) => {
     const t = now(), recent = (fails.get(addr) ?? []).filter((x) => t - x < FAILS_WINDOW_MS);
@@ -66,13 +77,20 @@ export function makeServer(o: Options): Server {
     const path = url.pathname, method = req.method ?? "GET";
 
     if (method === "GET" || method === "HEAD") {
-      if (path === "/" || path === "/index.html") return file(res, join(o.web, "index.html"), "no-cache");
+      if (path === "/" || path === "/index.html") return file(res, join(o.web, "index.html"), "no-cache", page);
       const m = /^\/sprite\/(\d+)\.png$/.exec(path);
       if (m) {
         const p = o.avatars.sprite(Number(m[1]));
         return p ? file(res, p, "public, max-age=86400") : notFound(res);
       }
       if (/^\/[a-z0-9_-]+\.(js|css|svg|png)$/.test(path)) return file(res, join(o.web, path.slice(1)), "no-cache");
+      const bps = /^\/egg\/patch\/(v[0-9.x]+)\/([^/]+\.bps)$/.exec(path);
+      if (bps) {
+        let name = "";
+        try { name = decodeURIComponent(bps[2]); } catch { /* not a name */ }
+        const p = name && o.egg?.patch(bps[1], name);   // only a name its PATCHES/ lists
+        return p ? stream(res, p, "application/octet-stream", "public, max-age=31536000, immutable") : notFound(res);
+      }
     }
 
     if (!path.startsWith("/api/")) return notFound(res);
@@ -83,7 +101,7 @@ export function makeServer(o: Options): Server {
       if (!origin || !sameSite(origin, req.headers.host)) throw new Refused("Not from a page of this site's.", 403);
       if (!/^application\/json\b/.test(req.headers["content-type"] ?? "")) throw new Refused("Send JSON.", 415);
     }
-    const who: Who = o.accounts.who(cookie(req), bearer);
+    const who: Who = o.accounts.who(cookie(req, COOKIE), bearer);
     if (bearer && !who) throw new Refused("That key opens no account.", 401);
     const body = method === "POST" ? await read(req) : {};
 
@@ -105,12 +123,41 @@ export function makeServer(o: Options): Server {
     }
 
     if (path === "/api/signout" && method === "POST") {
-      o.accounts.signOut(cookie(req));
+      o.accounts.signOut(cookie(req, COOKIE));
       res.setHeader("Set-Cookie", `${COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
       return json(res, { ok: true });
     }
 
     if (path === "/api/avatars" && method === "GET") return json(res, { groups: o.avatars.groups });
+
+    // ---- THE EASTER EGG: no sign-in, its own password ----------------------------------------------------------------
+    if (path === "/api/egg/carts" && method === "GET") {
+      if (!o.egg) throw new Refused("No releases here.", 404);
+      return json(res, { ...o.egg.carts(), pass: o.accounts.hasEggPass(cookie(req, EGG_COOKIE)), player: o.player ?? 4740 });
+    }
+    if (path === "/api/egg/open" && method === "POST") {
+      if (throttled(addr)) throw new Refused("Too many tries. Wait a quarter of an hour and try again.", 429);
+      try {
+        const t = await o.accounts.eggPass(String(body.password ?? ""));
+        log(`${addr} opened THE EASTER EGG`);
+        res.setHeader("Set-Cookie", `${EGG_COOKIE}=${encodeURIComponent(t)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+        return json(res, { pass: true });
+      } catch (e) {
+        if (e instanceof Refused && e.status === 401) failed(addr);
+        throw e;
+      }
+    }
+    if (path === "/api/egg/rom" && method === "POST") {
+      if (!o.egg) throw new Refused("No releases here.", 404);
+      if (!o.accounts.hasEggPass(cookie(req, EGG_COOKIE))) throw new Refused("The password first.", 401);
+      if (body.agreed !== true) throw new Refused("Tick that these are backups of carts you own.");
+      if (!isEdition(body.edition)) throw new Refused("No such cart.");
+      const rom = o.egg.rom(body.edition);
+      if (!rom || !existsSync(rom.path)) throw new Refused("No release has that cart yet.", 404);
+      log(`${addr} played ${body.edition} from the release, ${rom.release}, its backup ticked`);
+      res.setHeader("X-Release", rom.release);
+      return stream(res, rom.path, "application/octet-stream", "no-store");
+    }
 
     if (!who) throw new Refused("Sign in first.", 401);
     const me = who.account;
@@ -172,10 +219,10 @@ function sameSite(origin: string, host: string | undefined) {
   try { return new URL(origin).host === (host ?? "").toLowerCase() && ourHost(origin); } catch { return false; }
 }
 
-function cookie(req: IncomingMessage): string | null {
+function cookie(req: IncomingMessage, name: string): string | null {
   for (const part of (req.headers.cookie ?? "").split(";")) {
     const [k, ...v] = part.trim().split("=");
-    if (k === COOKIE && v.length) return decodeURIComponent(v.join("="));
+    if (k === name && v.length) { try { return decodeURIComponent(v.join("=")); } catch { return null; } }
   }
   return null;
 }
@@ -211,11 +258,17 @@ function json(res: ServerResponse, v: unknown, status = 200) {
      .end(JSON.stringify(v));
 }
 
-function file(res: ServerResponse, p: string, cache: string) {
+function file(res: ServerResponse, p: string, cache: string, extra: Record<string, string> = {}) {
   if (!existsSync(p)) return notFound(res);
   const data = readFileSync(p);
   res.writeHead(200, { "Content-Type": TYPES[extname(p)] ?? "application/octet-stream", "Content-Length": data.length,
-                       "Cache-Control": cache, ...HEADERS }).end(res.req.method === "HEAD" ? undefined : data);
+                       "Cache-Control": cache, ...HEADERS, ...extra }).end(res.req.method === "HEAD" ? undefined : data);
+}
+
+function stream(res: ServerResponse, p: string, type: string, cache: string) {
+  res.writeHead(200, { "Content-Type": type, "Content-Length": statSync(p).size, "Cache-Control": cache, ...HEADERS });
+  if (res.req.method === "HEAD") return res.end();
+  createReadStream(p).on("error", () => res.destroy()).pipe(res);
 }
 
 function notFound(res: ServerResponse) {

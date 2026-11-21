@@ -1,28 +1,9 @@
 // EUDAIMONIA's front page: who is signed in, SIGN IN, the forced first password change, YOUR ACCOUNT (a daemon for an
-// avatar) and the admin's ACCOUNTS -- all in modals over THE DASHBOARD's frame (C-439, C-436). No library.
-const $ = (id) => document.getElementById(id);
+// avatar) and the admin's ACCOUNTS -- all in modals over THE DASHBOARD's frame (C-439, C-436). No library. THE EASTER
+// EGG is egg.js's.
+import { $, api, el } from "./ui.js";
 const LANES = ["game", "story", "audio", "art", "app", "hub", "esp32", "pi-zero", "playground", "docs", "ops"];
 let me = null, limited = false, groups = null;
-
-async function api(method, path, body) {
-  const r = await fetch(path, { method, headers: body ? { "Content-Type": "application/json" } : {},
-                                body: body ? JSON.stringify(body) : undefined, credentials: "same-origin" });
-  const v = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(v.error || `The server said ${r.status}.`);
-  return v;
-}
-
-function el(tag, props = {}, ...kids) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) {
-    if (k === "class") e.className = v;
-    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
-    else if (v === true) e.setAttribute(k, "");
-    else if (v !== false && v != null) e.setAttribute(k, v);
-  }
-  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(String(k)));
-  return e;
-}
 
 const sprite = (id, size = 40) => (id == null ? el("span", { class: "blank", "aria-hidden": "true" })
   : el("img", { src: `/sprite/${id}.png`, width: size, height: size, alt: "", loading: "lazy" }));
@@ -211,8 +192,9 @@ makeForm.addEventListener("submit", (ev) => {
 
 async function drawEgg() {
   const e = await api("GET", "/api/egg");
-  $("egg-line").textContent = e.set ? `Its password was last set ${when(e.changed)}. Set a new one here.`
-                                    : "No password is set, so the easter egg stays shut. Set one here.";
+  $("egg-line").textContent = !e.set ? "No password is set, so the easter egg stays shut. Set one here."
+    : e.seeded ? `Its first password, from ${e.seeded}, is still set (${when(e.changed)}). Set your own here.`
+    : `Its password was last set ${when(e.changed)}. Set a new one here: every browser that opened it with the old one is asked again.`;
 }
 $("egg-form").addEventListener("submit", (ev) => {
   ev.preventDefault();

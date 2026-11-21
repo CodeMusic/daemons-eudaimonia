@@ -21,12 +21,30 @@ and **SIGN IN** beside it, with the accounts behind it. Every word on it is a DR
 - **Every account picks a daemon** in YOUR ACCOUNT, from the daemons grouped by type, each group in its type's colour.
   Its sprite is the account's picture, and is to be its lane's on THE DASHBOARD. The daemons and their sprites are read
   from DAEMONS and the companion beside this repository, never copied here.
-- **The admin sets THE EASTER EGG's password.** No password, no egg.
+- **THE EASTER EGG** is hidden on the front page, behind a password the admin keeps (below).
 
 It keeps its accounts in `data/eudaimonia/accounts.json` (this machine's, mode 0600): passwords as scrypt hashes,
 sessions and keys as SHA-256 hashes of random bytes, so nothing there can be read back. A browser's change must come
 from a page of this site, as JSON; a sign-in is refused for a quarter of an hour after eight wrong passwords from one
 address.
+
+### THE EASTER EGG: your cart becomes a DAEMONS cart
+
+Somewhere on the front page a password is asked for. Then: **which cart do you own?** FIRERED, LEAFGREEN or both,
+drawn as carts. The others leave, the chosen turn into **CONTENT** and **CONTEXT**, and a cookie remembers them, so the
+next visit opens on your carts (with a line to forget them and start again). A cart plays in **the playground's own
+player**, framed over the page: its saves, its companion and what's new, as at port 4740. It is made one of two ways:
+
+| | how | what is sent |
+|---|---|---|
+| **YOUR OWN CART** | your FireRed or LeafGreen file (1.0 or Rev 1, as dumped from the cart), patched in your browser by the latest release's BPS patch, and checked | only the patch, which every release publishes anyway |
+| **THE RELEASE'S OWN** | the release's ROM, with the password and a tick that these are backups of carts you own | the ROM, from this machine, to its own networks |
+
+The password is kept only as a hash; a browser that gives it holds a pass (a cookie) for thirty days. Its first value
+is taken once, at the first run, from `$EUDAIMONIA_EGG` or the DAEMONS author's private notes, and never from a
+repository; **the admin changes it in ACCOUNTS**, and a new one closes every pass the old one gave. The patches and ROMs
+are read from DAEMONS' `ROM RELEASE/` when they are asked for, never kept here (`src/egg.ts`, `web/egg.js`,
+`web/bps.js`).
 
 It runs on **Node 22.18 or newer**, which runs its TypeScript (`src/`) as it is: there is nothing to install to run it.
 `npm test` runs its tests the same way; `npm install` once fetches the type checker, for `npm run typecheck`.

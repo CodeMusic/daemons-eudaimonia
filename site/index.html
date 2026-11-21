@@ -3,7 +3,9 @@
      game just by going to a url"): the edition, DEBUG or not, a save to start from or a new game; the game played here,
      its save kept and downloaded; the companion and each release's notes in tabs beside it. Served by
      server/playground.py, which reads the ROMs from DAEMONS' ROM RELEASE and keeps them on this machine's network. The
-     emulator is EmulatorJS's mGBA core, loaded from EmulatorJS's own CDN: nothing of it is kept in this repository. -->
+     emulator is EmulatorJS's mGBA core, loaded from EmulatorJS's own CDN: nothing of it is kept in this repository.
+     It is also THE EASTER EGG's player (companion C-437): EUDAIMONIA's page frames it with #from=<its origin> and hands
+     it one cart -- the player's own, patched there, or the release's -- and the game is played here as any other. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -283,6 +285,7 @@ const NAMES = { content: "daemonsContent", context: "daemonsContext" };
 const SAVE_SIZE = 131072;                      // FireRed's flash: 128 KB, erased to 0xFF
 const $ = (id) => document.getElementById(id);
 let info = null, save = null, saveName = "", game = null, started = false;
+let handed = null;   // THE EASTER EGG's cart, handed over by EUDAIMONIA's page: { from, edition, bytes, release, own }
 
 // ---- the chooser ----------------------------------------------------------------------------------------------------
 // The browser keeps the choices and the saves under the repository's first name: the rename to daemons-eudaimonia
@@ -295,19 +298,68 @@ function chosen() {
 }
 function shade() { document.body.classList.toggle("context", chosen().edition === "context"); }
 function available() {
+  if (handed) {
+    $("play").disabled = !handed.bytes;
+    $("play").textContent = !handed.bytes ? "WAITING FOR YOUR CART…" : save ? "CONTINUE FROM SAVE" : "NEW GAME";
+    return;
+  }
   const { edition, debug } = chosen(), ok = info && info.editions.includes(edition + (debug ? "_debug" : ""));
   $("play").disabled = !ok;
   $("play").textContent = !info ? "…" : !ok ? "NOT IN THIS RELEASE" : save ? "CONTINUE FROM SAVE" : "NEW GAME";
 }
 
+// ---- THE EASTER EGG's cart (companion C-437) --------------------------------------------------------------------------
+// EUDAIMONIA's page frames this one with #from=<its origin>, on this same host: this page says READY to that origin
+// alone, and takes one cart from it -- the ROM itself, made there (the player's own cart, patched in that browser) or
+// sent there (the release's, with its password and the backups ticked). Then it plays here like any other game: its
+// save kept, downloaded and given to the companion as always. Asked to KEEP, it keeps the save and says KEPT; its
+// Change game becomes Back to your carts, which asks EUDAIMONIA to CLOSE it. A reload is the playground again.
+const cartHost = () => (window.parent !== window ? window.parent : window.opener);
+function handedFrom() {
+  const m = /^#from=(.+)$/.exec(location.hash);
+  if (!m || !cartHost()) return null;
+  try {
+    const u = new URL(decodeURIComponent(m[1]));
+    return u.hostname === location.hostname && u.protocol === location.protocol ? u.origin : null;
+  } catch { return null; }
+}
+function awaitCart(from) {
+  history.replaceState(null, "", location.pathname + location.search);
+  handed = { from };
+  $("debug").checked = false;
+  $("debug").closest("label").hidden = true;
+  document.querySelectorAll("input[name=edition]").forEach((i) => (i.disabled = true));
+  $("change").textContent = "Back to your carts";
+  addEventListener("message", async (e) => {
+    const d = e.data;
+    if (e.origin !== from || e.source !== cartHost() || !d) return;
+    if (d.eudaimonia === "keep") { try { await keep(); } catch { /* kept every five seconds anyway */ } cartHost()?.postMessage({ eudaimonia: "kept" }, from); return; }
+    if (d.eudaimonia !== "cart" || handed.bytes) return;
+    const bytes = d.rom instanceof Uint8Array ? d.rom : d.rom instanceof ArrayBuffer ? new Uint8Array(d.rom) : null;
+    if (!bytes || bytes.length < 1 << 20 || bytes.length > 32 << 20) return;
+    const edition = d.edition === "context" ? "context" : "content";
+    handed = { from, edition, bytes, release: String(d.release || ""), own: d.own === true };
+    document.querySelector(`input[name=edition][value=${edition}]`).checked = true;
+    shade();
+    $("release").textContent = `${handed.release || "the latest release"} · ${handed.own ? "your own cart, made into DAEMONS in your browser" : "the release's own, your cart's backup"}`;
+    available();
+  });
+  const ready = () => { if (!handed.bytes && cartHost()) cartHost().postMessage({ eudaimonia: "ready" }, from); };
+  ready();
+  const again = setInterval(() => (handed.bytes || !cartHost() ? clearInterval(again) : ready()), 500);
+}
+
 async function boot() {
+  const from = handedFrom();
+  if (from) awaitCart(from);
   const r = remembered();
-  if (r.edition) document.querySelector(`input[name=edition][value=${r.edition === "context" ? "context" : "content"}]`).checked = true;
-  $("debug").checked = !!r.debug;
+  if (r.edition && !handed) document.querySelector(`input[name=edition][value=${r.edition === "context" ? "context" : "content"}]`).checked = true;
+  if (!handed) $("debug").checked = !!r.debug;
   shade();
   try {
     info = await (await fetch("info.json", { cache: "no-store" })).json();
-    $("release").textContent = info.release === "build" ? "engineGba's own build" : info.release;
+    if (!handed?.bytes) $("release").textContent = handed ? "waiting for your cart from EUDAIMONIA…"
+      : info.release === "build" ? "engineGba's own build" : info.release;
   } catch {
     $("release").textContent = "the server isn't answering";
   }
@@ -336,7 +388,7 @@ $("savefile").addEventListener("change", async (e) => {
 
 $("play").addEventListener("click", () => {
   const { edition, debug } = chosen();
-  remember({ edition, debug });
+  if (!handed) remember({ edition, debug });
   game = { edition, debug, build: edition + (debug ? "_debug" : ""), base: NAMES[edition] + (debug ? "_debug" : "") };
   $("choose").hidden = true;
   $("screen").hidden = false;
@@ -344,7 +396,10 @@ $("play").addEventListener("click", () => {
   Object.assign(window, {
     EJS_player: "#game",
     EJS_core: "gba",
-    EJS_gameUrl: `rom/${encodeURIComponent(info.release)}/${game.base}.gba`,
+    // a cart from THE EASTER EGG goes in as a file of the ROM's own name: EmulatorJS names the save after it, and never
+    // keeps it in its ROM cache, where a release's ROM is kept under its name alone
+    EJS_gameUrl: handed?.bytes ? new File([handed.bytes], game.base + ".gba")
+                               : `rom/${encodeURIComponent(info.release)}/${game.base}.gba`,
     EJS_gameName: game.base,
     EJS_pathtodata: CDN,
     EJS_startOnLoaded: true,                   // the PLAY press is the gesture the browser's sound waits for
@@ -454,7 +509,8 @@ async function onStart() {
 }
 function what(from) {
   $("what").textContent = [game.edition.toUpperCase(), game.debug ? "DEBUG" : null,
-                           info.release === "build" ? "engineGba build" : info.release, from].filter(Boolean).join(" · ");
+                           handed ? (handed.release || null) : info.release === "build" ? "engineGba build" : info.release,
+                           handed ? (handed.own ? "your own cart" : "your cart's backup") : null, from].filter(Boolean).join(" · ");
 }
 $("kept-continue").onclick = () => {
   $("kept").close();
@@ -497,6 +553,7 @@ $("change").onclick = async () => {
   if (!confirm("Leave this game? Its last save stays in this browser; download it to keep a copy elsewhere.")) return;
   await keep();
   leaving = true;
+  if (handed?.from && cartHost()) return cartHost().postMessage({ eudaimonia: "close" }, handed.from);
   location.reload();
 };
 let leaving = false;

@@ -23,6 +23,7 @@ New to the game itself? **[MICRO-START](https://github.com/CodeMusic/DAEMONS/blo
 | page | what it covers |
 |---|---|
 | [Accounts and sign-in](Accounts-and-sign-in) | EUDAIMONIA's first pieces: the first sign-in, people and agents, a daemon for each, THE EASTER EGG's password |
+| [The easter egg](The-easter-egg) | your cart becomes a DAEMONS cart: FIRERED or LEAFGREEN into CONTENT and CONTEXT, played in the playground's player |
 | [Running the playground](Running-the-playground) | `bindEudaimonia.sh`, its options, what it needs, and who it answers |
 | [Editions and builds](Editions-and-builds) | CONTENT and CONTEXT, the DEBUG builds, the newest release or your own build |
 | [Saves](Saves) | how the game's save is kept in the browser, a `.sav` to start from or download, a new game |

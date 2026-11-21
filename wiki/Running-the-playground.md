@@ -17,7 +17,8 @@
 
 Then open `http://localhost:4740/`, or the tailnet address it prints to play from a phone. Nothing else needs to be
 running. The same command starts EUDAIMONIA beside it on port 4741 ([Accounts and sign-in](Accounts-and-sign-in)),
-when Node 22.18 or newer is there; without it the playground runs alone.
+when Node 22.18 or newer is there; without it the playground runs alone. EUDAIMONIA's [easter egg](The-easter-egg) plays
+its carts in this playground's page.
 
 | | |
 |---|---|

@@ -33,8 +33,10 @@ The daemons, their types and their sprites are read from DAEMONS and the compani
 
 ## THE EASTER EGG's password
 
-ACCOUNTS ends with **THE EASTER EGG**: the admin sets its password there, kept hashed like every other. Until one is
-set, the egg stays shut.
+ACCOUNTS ends with **THE EASTER EGG** ([The easter egg](The-easter-egg)): the admin sets its password there, kept hashed
+like every other. Its first value is taken once, at the first run, from `$EUDAIMONIA_EGG` or the author's private notes,
+and the admin then sets their own; a new password closes every pass the old one gave. With no password at all, the egg
+stays shut.
 
 ## What it keeps
 

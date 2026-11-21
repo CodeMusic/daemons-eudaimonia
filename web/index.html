@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- EUDAIMONIA's front page (C-439): THE DASHBOARD's frame (C-411, to come) with SIGN IN beside it, and the accounts
-     (C-436) in modals, so nothing leaves the page. Served by src/server.ts; app.js draws it. Every word DRAFT. -->
+     (C-436) in modals, so nothing leaves the page. THE EASTER EGG (C-437) is the dim cart in THE RELEASES' corner.
+     Served by src/server.ts; app.js and egg.js draw it. Every word DRAFT. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -8,6 +9,7 @@
 <title>EUDAIMONIA</title>
 <link rel="stylesheet" href="/style.css">
 <script type="module" src="/app.js"></script>
+<script type="module" src="/egg.js"></script>
 </head>
 <body>
 <header class="top">
@@ -35,7 +37,10 @@
     <div class="panels">
       <article class="panel"><h3>THE LANES</h3><p class="dim">Each lane at work, drawn with its daemon.</p></article>
       <article class="panel"><h3>WAITING ON YOU</h3><p class="dim">What only you can answer.</p></article>
-      <article class="panel"><h3>THE RELEASES</h3><p class="dim">Each one, and what it changed.</p></article>
+      <article class="panel"><h3>THE RELEASES</h3><p class="dim">Each one, and what it changed.</p>
+        <button id="egg-spot" class="egg-spot" aria-label="A cart, left here"><svg viewBox="0 0 160 112" aria-hidden="true">
+          <rect class="shell" x="4" y="4" width="152" height="104" rx="12"/><rect class="label" x="18" y="18" width="124" height="66" rx="6"/></svg></button>
+      </article>
     </div>
   </section>
 </main>
@@ -107,6 +112,57 @@
 <dialog id="pick" class="wide" aria-labelledby="pick-title">
   <div class="dialog-head"><h2 id="pick-title">A DAEMON FOR</h2><button data-close aria-label="Close">✕</button></div>
   <div class="picker" id="pick-picker"></div>
+</dialog>
+
+<dialog id="egg" class="wide egg" aria-labelledby="egg-title">
+  <div class="dialog-head"><h2 id="egg-title">SOMETHING IS HERE</h2><button data-close aria-label="Close">✕</button></div>
+
+  <section id="egg-door" hidden>
+    <p>Something is kept here, and it asks for a password.</p>
+    <form id="egg-door-form">
+      <label>The password <input name="password" type="password" autocomplete="off" required></label>
+      <p class="error" role="alert"></p>
+      <div class="actions"><button class="primary">OPEN</button></div>
+    </form>
+  </section>
+
+  <section id="egg-stage" hidden>
+    <p class="dim" id="egg-stage-line"></p>
+    <div class="stage" id="egg-stage-carts"></div>
+    <p class="dim small" id="egg-again-line">Not your carts? <button class="link" id="egg-again">Forget them, and start again</button></p>
+    <p class="dim small">Kept in this browser, as a cookie.</p>
+  </section>
+
+  <section id="egg-play" hidden>
+    <div class="play-head"><span id="egg-play-cart"></span><p id="egg-play-line"></p></div>
+    <div class="ways" id="egg-ways">
+      <article class="way">
+        <h3>YOUR OWN CART</h3>
+        <p class="dim" id="egg-own-line"></p>
+        <label class="file" id="egg-own-pick"><span>Choose your cart's file</span><input type="file" id="egg-file" accept=".gba,.agb,.bin"></label>
+        <p class="status" id="egg-own-status" role="status"></p>
+        <div class="actions"><button class="primary" id="egg-own-play" disabled>PLAY</button></div>
+      </article>
+      <article class="way">
+        <h3>THE RELEASE'S OWN</h3>
+        <form id="egg-release-form">
+          <p class="dim" id="egg-release-line"></p>
+          <label class="check"><input type="checkbox" name="agreed" required> These are backups of carts I own.</label>
+          <label id="egg-release-pw">The password <input name="password" type="password" autocomplete="off"></label>
+          <p class="error" role="alert"></p>
+          <div class="actions"><button class="primary">PLAY</button></div>
+        </form>
+      </article>
+    </div>
+    <p class="dim small">It plays here, in the playground's player: its saves, its companion, what's new.
+      <button class="link" id="egg-back">Back to your carts</button></p>
+  </section>
+</dialog>
+
+<dialog id="egg-player" class="player" aria-label="The playground's player">
+  <div class="player-bar"><b id="egg-player-what"></b><span class="dim" id="egg-player-wait" role="status"></span>
+    <button id="egg-player-close">CLOSE</button></div>
+  <div class="player-frame" id="egg-player-frame"></div>
 </dialog>
 
 <dialog id="secret" aria-labelledby="secret-title">

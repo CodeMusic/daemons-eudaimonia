@@ -1,6 +1,7 @@
 **[daemons-eudaimonia](Home)**
 
 - [Accounts and sign-in](Accounts-and-sign-in)
+- [The easter egg](The-easter-egg)
 - [Running the playground](Running-the-playground)
 - [Editions and builds](Editions-and-builds)
 - [Saves](Saves)

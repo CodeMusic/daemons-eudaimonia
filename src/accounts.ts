@@ -8,7 +8,8 @@
 //     key, an agent never a password, and the admin's lists show them as two.
 //   * Every account picks a daemon as its avatar (avatars.ts): its sprite is the account's picture, and later its lane's
 //     group on the dashboard (C-411).
-//   * The admin sets THE EASTER EGG's password (C-437), kept here hashed like every other.
+//   * The admin sets THE EASTER EGG's password (C-437), kept here hashed like every other; its door gives a browser a
+//     pass, kept as a hash too, to play the release's own ROM (egg.ts).
 //
 // Passwords are kept as scrypt hashes, sessions and keys as SHA-256 hashes of 32 random bytes: nothing here can be read
 // back. The file is data/eudaimonia/accounts.json, written whole through a temporary file and renamed (mode 0600).
@@ -27,9 +28,11 @@ export type Account = {
   disabled?: boolean; made: string; madeBy: string | null; seen?: string;
 };
 type Session = { hash: string; account: string; until: string; limited: boolean };
-type Data = { accounts: Account[]; sessions: Session[]; egg?: Hashed & { changed: string; by: string } };
+type Data = { accounts: Account[]; sessions: Session[]; egg?: Hashed & { changed: string; by: string | null; seeded?: string };
+              passes?: { hash: string; until: string }[] };
 
-export const SESSION_MS = 30 * 24 * 60 * 60 * 1000, LIMITED_MS = 15 * 60 * 1000;
+export const SESSION_MS = 30 * 24 * 60 * 60 * 1000, LIMITED_MS = 15 * 60 * 1000, EGG_PASS_MS = 30 * 24 * 60 * 60 * 1000;
+export const EGG_LEAST = 6;
 export const NAME = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 export const PASSWORD_LEAST = 10;
 
@@ -189,16 +192,40 @@ export class Accounts {
     return this.setAvatar(this.mustGet(id), species);
   }
 
-  /** THE EASTER EGG's password (C-437): set by the admin, kept hashed. */
+  /** THE EASTER EGG's password (C-437): set by the admin, kept hashed. A new one closes every pass the old one gave. */
   async setEgg(by: Account, password: string) {
     this.mustBeAdmin(by);
-    if (String(password || "").length < 6) throw new Refused("The easter egg's password is at least 6 characters.");
+    if (String(password || "").length < EGG_LEAST) throw new Refused(`The easter egg's password is at least ${EGG_LEAST} characters.`);
     this.data.egg = { ...(await this.hash(password)), changed: this.iso(), by: by.id };
+    this.data.passes = [];
     this.save();
     return this.egg();
   }
-  egg() { return { set: !!this.data.egg, changed: this.data.egg?.changed ?? null }; }
+  /** Its first value, at the first run only (main.ts reads it from DAEMONS' private notes): never once one is set. */
+  async seedEgg(password: string, from: string) {
+    if (this.data.egg || String(password || "").length < EGG_LEAST) return false;
+    this.data.egg = { ...(await this.hash(password)), changed: this.iso(), by: null, seeded: from };
+    this.save();
+    return true;
+  }
+  egg() { return { set: !!this.data.egg, changed: this.data.egg?.changed ?? null, seeded: this.data.egg?.seeded ?? null }; }
   async eggOpens(password: string) { return !!this.data.egg && this.check(password, this.data.egg); }
+
+  /** The egg's door: the password opens it, and gives this browser a pass (a cookie) to play the release's own ROM. */
+  async eggPass(password: string) {
+    if (!this.data.egg) throw new Refused("It is shut: no password is set yet.", 403);
+    if (!(await this.eggOpens(password))) throw new Refused("That isn't it.", 401);
+    const t = token(), now = this.iso();
+    this.data.passes = (this.data.passes ?? []).filter((p) => p.until > now);
+    this.data.passes.push({ hash: sha(t), until: new Date(this.now() + EGG_PASS_MS).toISOString() });
+    this.save();
+    return t;
+  }
+  hasEggPass(t: string | null) {
+    if (!t) return false;
+    const h = sha(t), now = this.iso();
+    return (this.data.passes ?? []).some((p) => p.hash === h && p.until > now);
+  }
 
   // ---- inside ---------------------------------------------------------------------------------------------------------
 

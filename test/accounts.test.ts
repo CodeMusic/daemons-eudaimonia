@@ -138,3 +138,32 @@ test("the file holds hashes only, and only its owner may read it", async () => {
   const b = new Accounts(file, CHEAP);   // read back
   assert.equal(b.who(null, secret)?.account.name, "app");
 });
+
+test("THE EASTER EGG's first password is seeded once, and gives way to the admin's", async () => {
+  const a = await fresh();
+  assert.equal(await a.seedEgg("first-door", "the private note"), true);
+  assert.deepEqual([a.egg().set, a.egg().seeded], [true, "the private note"]);
+  assert.equal(await a.seedEgg("another", "again"), false);
+  assert.equal(await a.eggOpens("first-door"), true);
+  await a.setEgg(a.byName("admin")!, "the admin's own");
+  assert.equal(a.egg().seeded, null);
+  assert.equal(await a.eggOpens("first-door"), false);
+});
+
+test("the egg's door gives a pass; a new password closes every pass the old one gave", async () => {
+  let t = Date.parse("2026-11-20T12:00:00Z");
+  const a = new Accounts(null, CHEAP, () => t);
+  await a.open();
+  await assert.rejects(a.eggPass("anything"), refused(403));   // shut: no password yet
+  await a.setEgg(a.byName("admin")!, "a door in the wall");
+  await assert.rejects(a.eggPass("a door"), refused(401));
+  const pass = await a.eggPass("a door in the wall");
+  assert.equal(a.hasEggPass(pass), true);
+  assert.equal(a.hasEggPass("not a pass"), false);
+  assert.equal(a.hasEggPass(null), false);
+  t += 31 * 24 * 60 * 60 * 1000;
+  assert.equal(a.hasEggPass(pass), false);   // a pass lasts thirty days
+  const again = await a.eggPass("a door in the wall");
+  await a.setEgg(a.byName("admin")!, "a new door");
+  assert.equal(a.hasEggPass(again), false);
+});
