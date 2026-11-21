@@ -123,7 +123,11 @@ tailnet**, and refuses anything else before a byte is read. Keep it that way: th
 testing among the people on your own network, never a public site.
 
 **No emulator either.** The game runs on [EmulatorJS](https://emulatorjs.org) (GPL-3.0) and its mGBA core, loaded from
-EmulatorJS's own CDN, version 4.2.3, when a game starts.
+EmulatorJS's own CDN, version 4.2.3, when a game starts. EmulatorJS keeps a copy of a ROM it has played in the browser and plays it again
+whenever the size matches, and every DAEMONS ROM is the same size, so until 2026-11-21 a browser went on playing the
+first release it ever played here (E-5). The page now names the release in the ROM's address, which EmulatorJS keys its
+copy by, and forgets every other copy of that build before a game starts: the newest release is always the one played,
+and a save still carries from one release to the next.
 
 ## How the save is kept
 

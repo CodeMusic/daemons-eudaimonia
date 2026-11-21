@@ -386,20 +386,51 @@ $("savefile").addEventListener("change", async (e) => {
   available();
 });
 
-$("play").addEventListener("click", () => {
+// ---- EmulatorJS's own copy of the ROM (DAEMONS-EUDAIMONIA E-5) -------------------------------------------------------
+// EmulatorJS keeps a ROM it has played in IndexedDB (EmulatorJS-roms) under the last part of its URL, and plays that copy
+// again whenever the server's Content-Length matches. Every DAEMONS ROM is 16,777,216 bytes, so a browser went on
+// playing the first release it ever played here, whatever the page said (found 2026-11-20: v11.409's ROM under
+// v11.411.1's name). So the URL ends in the release -- rom/v11.411.1/daemonsContent.gba?v11.411.1 -- which EmulatorJS's
+// key keeps and its file name and save drop, and every other copy of this build is forgotten before it looks. engineGba's
+// own build has no release to name, so it is fetched afresh each time.
+const romStamp = () => (info.release === "build" ? "build-" + Date.now() : info.release);
+function forgetOtherRoms(base, keep) {
+  return new Promise((done) => {
+    let open;
+    try { open = indexedDB.open("EmulatorJS-roms", 1); } catch { return done(); }
+    open.onupgradeneeded = () => { if (!open.result.objectStoreNames.contains("rom")) open.result.createObjectStore("rom"); };
+    open.onerror = () => done();
+    open.onsuccess = () => {
+      const db = open.result;
+      try {
+        const tx = db.transaction("rom", "readwrite"), rom = tx.objectStore("rom"), all = rom.getAllKeys();
+        all.onsuccess = () => {
+          const gone = all.result.filter((k) => typeof k === "string" && k !== keep && (k === base + ".gba" || k.startsWith(base + ".gba?")));
+          for (const k of gone) rom.delete(k);
+          const list = rom.get("?EJS_KEYS!");   // EmulatorJS's own list of what it keeps
+          list.onsuccess = () => { if (gone.length && Array.isArray(list.result)) rom.put(list.result.filter((k) => !gone.includes(k)), "?EJS_KEYS!"); };
+        };
+        tx.oncomplete = tx.onerror = tx.onabort = () => { db.close(); done(); };
+      } catch { db.close(); done(); }
+    };
+  });
+}
+
+$("play").addEventListener("click", async () => {
   const { edition, debug } = chosen();
   if (!handed) remember({ edition, debug });
   game = { edition, debug, build: edition + (debug ? "_debug" : ""), base: NAMES[edition] + (debug ? "_debug" : "") };
   $("choose").hidden = true;
   $("screen").hidden = false;
   what(save ? "from " + saveName : "new game");
+  const stamp = romStamp(), rom = `rom/${encodeURIComponent(info.release)}/${game.base}.gba?${encodeURIComponent(stamp)}`;
+  if (!handed?.bytes) await forgetOtherRoms(game.base, `${game.base}.gba?${encodeURIComponent(stamp)}`);
   Object.assign(window, {
     EJS_player: "#game",
     EJS_core: "gba",
     // a cart from THE EASTER EGG goes in as a file of the ROM's own name: EmulatorJS names the save after it, and never
-    // keeps it in its ROM cache, where a release's ROM is kept under its name alone
-    EJS_gameUrl: handed?.bytes ? new File([handed.bytes], game.base + ".gba")
-                               : `rom/${encodeURIComponent(info.release)}/${game.base}.gba`,
+    // keeps it in its ROM cache; a release's ROM is kept there under its name and its release (forgetOtherRoms, above)
+    EJS_gameUrl: handed?.bytes ? new File([handed.bytes], game.base + ".gba") : rom,
     EJS_gameName: game.base,
     EJS_pathtodata: CDN,
     EJS_startOnLoaded: true,                   // the PLAY press is the gesture the browser's sound waits for
