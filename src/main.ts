@@ -9,15 +9,19 @@
 // DAEMONS beside this repository (../DAEMONS, or $DAEMONS_ROOT) gives the daemons' sprites and the releases (its ROM
 // RELEASE/, or $DAEMONS_RELEASES); the companion (DAEMONS/companion, or $COMPANION_ROOT) its INDEX cards, which name
 // the daemons and their types. The playground's port is $PLAYGROUND_PORT, or 4740. THE EASTER EGG's first password is
-// $EUDAIMONIA_EGG, or the one in DAEMONS' private note on it (docs/private/, in no repository), taken once, at the
-// first run, and kept only as a hash: the admin changes it in ACCOUNTS.
+// $EUDAIMONIA_EGG, or the one in DAEMONS' private note on it (docs/private/, in no repository), kept only as a hash
+// and read again at every start until the admin sets their own in ACCOUNTS. THE DASHBOARD (E-1) reads the tickets from
+// Redmine with the playground lane's key, from ~/.redmine.env (or $REDMINE_ENV): never logged, never sent to a page.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Accounts } from "./accounts.ts";
 import { Avatars } from "./avatars.ts";
 import { Egg, firstEggPassword } from "./egg.ts";
+import { RedmineReader, redmineEnv } from "./redmine.ts";
+import { Releases } from "./releases.ts";
 import { makeServer } from "./server.ts";
 
 const ROOT = dirname(dirname(realpathSync(fileURLToPath(import.meta.url))));
@@ -42,17 +46,24 @@ if (await accounts.open()) say("the first account is admin, its password admin: 
 if (!avatars.count) say(`no daemons to pick from: the companion's INDEX cards are not at ${COMPANION}/server/data/index_cards.json`);
 
 const egg = new Egg(RELEASES);
-if (!accounts.egg().set) {
+{
   const note = join(DAEMONS, "docs", "private", "eudaimonia-easter-egg.md");
   const [first, from] = process.env.EUDAIMONIA_EGG ? [process.env.EUDAIMONIA_EGG, "$EUDAIMONIA_EGG"]
     : [existsSync(note) ? firstEggPassword(readFileSync(note, "utf8")) : null, "DAEMONS' private note"];
-  if (first && await accounts.seedEgg(first, from)) say(`THE EASTER EGG's first password is set, from ${from}: the admin changes it in ACCOUNTS`);
-  else say("THE EASTER EGG has no password, so it stays shut: the admin sets one in ACCOUNTS");
+  const seeded = first ? await accounts.seedEgg(first, from) : false;
+  if (seeded) say(`THE EASTER EGG's password is set${seeded === "again" ? " again (a new value)" : ""}, from ${from}: the admin changes it in ACCOUNTS`);
+  else if (!accounts.egg().set) say("THE EASTER EGG has no password, so it stays shut: the admin sets one in ACCOUNTS");
 }
+const envFile = process.env.REDMINE_ENV || join(homedir(), ".redmine.env");
+const rm = existsSync(envFile) ? redmineEnv(readFileSync(envFile, "utf8")) : null;
+const redmine = rm ? new RedmineReader(rm.url, rm.key) : null;
+say(redmine ? `THE DASHBOARD reads the tickets from ${rm!.url}, read-only, as the playground lane`
+            : `THE DASHBOARD has no tickets: no REDMINE_URL and REDMINE_KEY_PLAYGROUND in ${envFile}`);
 const latest = egg.latest();
 say(latest ? `THE EASTER EGG's carts play ${latest.name}, in the playground's player on port ${PLAYER}` : `no release in ${RELEASES}: the egg's carts have nothing to play`);
 
-const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say });
+const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
+                           redmine, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

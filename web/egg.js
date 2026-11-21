@@ -1,6 +1,7 @@
 // THE EASTER EGG (C-437, the user 2026-11-20): your cart becomes a DAEMONS cart. Every word here is a DRAFT.
 //
-// A dim cart in THE RELEASES' corner opens it. Before the first cart choice, it asks for its password (the door). Then:
+// A dim egg in THE RELEASES' corner opens it (E-7: it was a cart). Before the first cart choice, its door asks a
+// riddle, and takes the answer -- its password -- in any case (accounts.ts). Then:
 // which cart do you own? FIRERED, LEAFGREEN or BOTH, drawn as carts. The others leave and the chosen turn into CONTENT
 // and CONTEXT; a cookie remembers them, so the next visit opens on your carts, with a line to forget them and start
 // again. A cart plays in the playground's mGBA player, framed over this page, made one of two ways:
@@ -85,7 +86,7 @@ async function openEgg() {
 }
 
 function door() {
-  view("door", "SOMETHING IS HERE");
+  view("door", "SOMETHING STIRS IN HERE");
   const f = $("egg-door-form");
   f.reset(); f.querySelector(".error").textContent = "";
 }

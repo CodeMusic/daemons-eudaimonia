@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# daemons-eudaimonia: EUDAIMONIA's first pieces, on port 4741 -- the front page's frame, sign-in and the accounts, and
-# THE EASTER EGG (C-439, C-436, C-437) -- beside the DAEMONS playground on 4740: the game in a browser, the companion
+# daemons-eudaimonia: EUDAIMONIA's first pieces, on port 4741 -- THE DASHBOARD, sign-in and the accounts, and THE
+# EASTER EGG (E-1, C-436, C-437) -- beside the DAEMONS playground on 4740: the game in a browser, the companion
 # beside it, what's new in each release. The egg's carts play in the playground's player.
 #
 #   ./bindEudaimonia.sh                 both: the playground (the latest ROM RELEASE) and EUDAIMONIA

@@ -16,6 +16,12 @@
 //   GET  /egg/patch/<release>/<file>.bps      a release's BPS patch, for a player's own cart (published anyway)
 //   POST /api/egg/rom {edition, agreed}       the release's own ROM: with the pass, and the backups ticked
 //
+// THE DASHBOARD (E-1), for anyone who reaches the site (the user, 2026-11-21, by multiple choice) -- read-only:
+//   GET  /api/board                  the lanes at work, what waits on the user, each project's progress (redmine.ts)
+//   GET  /api/ticket/<T-n|C-n|E-n>   one ticket: its words, fields and last notes, for its modal
+//   GET  /api/releases               every release, newest first   GET /api/release/<name>   one release's notes
+//   GET  /release/<group>/notes.pdf  a sealed group's notes          GET /art/player.png       the player, the monkey
+//
 // An agent calls the API with `Authorization: Bearer <its key>`; a person's browser with the session cookie. A POST
 // from a browser must come from a page of this site (its Origin is this Host), as JSON -- another site's page cannot
 // sign anyone in, out or anywhere else.
@@ -25,6 +31,8 @@ import { extname, join } from "node:path";
 import { type Account, type Accounts, type Kind, Refused, shown } from "./accounts.ts";
 import type { Avatars } from "./avatars.ts";
 import { type Egg, isEdition } from "./egg.ts";
+import { type RedmineReader, TICKET_ID } from "./redmine.ts";
+import type { Releases } from "./releases.ts";
 import { allowed, home, ourHost } from "./reach.ts";
 
 export const COOKIE = "eudaimonia", EGG_COOKIE = "eudaimonia-egg";
@@ -37,7 +45,9 @@ const HEADERS = {
 };
 
 export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?: (line: string) => void; now?: () => number;
-                        egg?: Egg; player?: number };
+                        egg?: Egg; player?: number;
+                        /** E-1: the tickets (null: no key to read them with), the releases, the companion's art folder */
+                        redmine?: RedmineReader | null; releases?: Releases; art?: string };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -84,6 +94,15 @@ export function makeServer(o: Options): Server {
         return p ? file(res, p, "public, max-age=86400") : notFound(res);
       }
       if (/^\/[a-z0-9_-]+\.(js|css|svg|png)$/.test(path)) return file(res, join(o.web, path.slice(1)), "no-cache");
+      // the player as the game draws them (the trainer card's REASON), from the companion's art: ours, never Nintendo's
+      if (path === "/art/player.png") return o.art ? file(res, join(o.art, "player_reason.png"), "public, max-age=86400") : notFound(res);
+      const sealed = /^\/release\/(v[0-9]+\.[0-9]+\.x)\/notes\.pdf$/.exec(path);
+      if (sealed) {
+        const p = o.releases?.pdf(sealed[1]);
+        return p ? stream(res, p, "application/pdf", "public, max-age=3600",
+                          { "Content-Security-Policy": "frame-ancestors 'none'", "Content-Disposition": `inline; filename="ReleaseNotes_${sealed[1]}.pdf"` })
+                 : notFound(res);
+      }
       const bps = /^\/egg\/patch\/(v[0-9.x]+)\/([^/]+\.bps)$/.exec(path);
       if (bps) {
         let name = "";
@@ -129,6 +148,30 @@ export function makeServer(o: Options): Server {
     }
 
     if (path === "/api/avatars" && method === "GET") return json(res, { groups: o.avatars.groups });
+
+    // ---- THE DASHBOARD: read-only, for anyone --------------------------------------------------------------------------
+    if (path === "/api/board" && method === "GET") {
+      if (!o.redmine) return json(res, { board: null, why: "This site has no key to read the tickets with." });
+      const board = await o.redmine.board(), agents = o.accounts.agents();
+      return json(res, { board: { ...board, lanes: board.lanes.map((l) => {
+        const daemon = agents.get(l.lane) ?? null;
+        return { ...l, account: agents.has(l.lane), daemon, daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null };
+      }) } });
+    }
+    const ticket = /^\/api\/ticket\/([A-Z]-[0-9]+)$/.exec(path);
+    if (ticket && method === "GET") {
+      if (!o.redmine) throw new Refused("This site has no key to read the tickets with.", 503);
+      const t = TICKET_ID.test(ticket[1]) ? await o.redmine.ticket(ticket[1]) : null;
+      if (!t) throw new Refused(`No ticket ${ticket[1]} here.`, 404);
+      return json(res, { ticket: t });
+    }
+    if (path === "/api/releases" && method === "GET") return json(res, { releases: o.releases?.list() ?? [] });
+    const release = /^\/api\/release\/(v[0-9]+\.[0-9]+\.(?:[0-9]+|x))$/.exec(path);
+    if (release && method === "GET") {
+      const r = o.releases?.notes(release[1]);
+      if (!r) throw new Refused(`No release ${release[1]} here.`, 404);
+      return json(res, r);
+    }
 
     // ---- THE EASTER EGG: no sign-in, its own password ----------------------------------------------------------------
     if (path === "/api/egg/carts" && method === "GET") {
@@ -265,8 +308,8 @@ function file(res: ServerResponse, p: string, cache: string, extra: Record<strin
                        "Cache-Control": cache, ...HEADERS, ...extra }).end(res.req.method === "HEAD" ? undefined : data);
 }
 
-function stream(res: ServerResponse, p: string, type: string, cache: string) {
-  res.writeHead(200, { "Content-Type": type, "Content-Length": statSync(p).size, "Cache-Control": cache, ...HEADERS });
+function stream(res: ServerResponse, p: string, type: string, cache: string, extra: Record<string, string> = {}) {
+  res.writeHead(200, { "Content-Type": type, "Content-Length": statSync(p).size, "Cache-Control": cache, ...HEADERS, ...extra });
   if (res.req.method === "HEAD") return res.end();
   createReadStream(p).on("error", () => res.destroy()).pipe(res);
 }

@@ -1,7 +1,7 @@
 # The easter egg
 
-**Your cart becomes a DAEMONS cart.** Somewhere on EUDAIMONIA's front page a password is asked for. Every word of it is
-a DRAFT.
+**Your cart becomes a DAEMONS cart.** A dim egg sits somewhere on EUDAIMONIA's front page. Open it and it asks a riddle;
+its answer is the password, taken in any case. Every word of it is a DRAFT.
 
 ## Which cart do you own?
 
@@ -26,7 +26,7 @@ and downloaded, its companion and what's new. CLOSE keeps the save first. It is 
 
 | | |
 |---|---|
-| the password | a scrypt hash, in `data/eudaimonia/accounts.json`; the admin changes it in ACCOUNTS |
+| the password | a scrypt hash of it in small letters, in `data/eudaimonia/accounts.json`; the admin changes it in ACCOUNTS |
 | a browser's pass | the cookie `eudaimonia-egg`, HttpOnly, thirty days; kept on the server only as a SHA-256 hash |
 | your carts | the cookie `eudaimonia-carts`, in your browser alone |
 | the release, its ROMs and patches | DAEMONS' `ROM RELEASE/`, read when asked for: the newest release with both editions |

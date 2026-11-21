@@ -1,7 +1,8 @@
 // C-436's rules, held by the store itself: the first password, who may do what, people apart from agents.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { randomBytes, scryptSync } from "node:crypto";
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Accounts, Refused } from "../src/accounts.ts";
@@ -139,15 +140,43 @@ test("the file holds hashes only, and only its owner may read it", async () => {
   assert.equal(b.who(null, secret)?.account.name, "app");
 });
 
-test("THE EASTER EGG's first password is seeded once, and gives way to the admin's", async () => {
+test("THE EASTER EGG's password comes from the private note until the admin sets their own", async () => {
   const a = await fresh();
-  assert.equal(await a.seedEgg("first-door", "the private note"), true);
+  assert.equal(await a.seedEgg("first-door", "the private note"), "first");
   assert.deepEqual([a.egg().set, a.egg().seeded], [true, "the private note"]);
-  assert.equal(await a.seedEgg("another", "again"), false);
-  assert.equal(await a.eggOpens("first-door"), true);
+  assert.equal(await a.seedEgg("first-door", "the private note"), false);    // the same value: nothing to do
+  const pass = await a.eggPass("first-door");
+  assert.equal(await a.seedEgg("A-New-Door", "the private note"), "again");  // a new value there replaces it
+  assert.equal(a.hasEggPass(pass), false);                                     // and closes the old passes
+  assert.equal(await a.eggOpens("first-door"), false);
+  assert.equal(await a.eggOpens("a-new-door"), true);
   await a.setEgg(a.byName("admin")!, "the admin's own");
   assert.equal(a.egg().seeded, null);
-  assert.equal(await a.eggOpens("first-door"), false);
+  assert.equal(await a.seedEgg("yet another", "the private note"), false);   // the admin's stands
+  assert.equal(await a.eggOpens("the admin's own"), true);
+});
+
+test("the egg's answer is taken in any case (E-7)", async () => {
+  const a = await fresh();
+  await a.setEgg(a.byName("admin")!, "CodeWord");
+  for (const w of ["CodeWord", "codeword", "CODEWORD", "cOdEwOrD"]) assert.equal(await a.eggOpens(w), true, w);
+  assert.equal(await a.eggOpens("codewor"), false);
+  assert.equal(await a.eggOpens("code word"), false);
+});
+
+test("an egg seeded before the fold is seeded again, so it takes any case", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "eudaimonia-"));
+  const file = join(dir, "accounts.json");
+  await new Accounts(file, CHEAP).open();
+  const salt = randomBytes(16), data = JSON.parse(readFileSync(file, "utf8"));
+  data.egg = { salt: salt.toString("base64url"), hash: scryptSync("Old-Door", salt, 32, { N: CHEAP, r: 8, p: 1 }).toString("base64url"),
+               n: CHEAP, changed: "2026-11-20T00:00:00.000Z", by: null, seeded: "the private note" };
+  writeFileSync(file, JSON.stringify(data));
+  const b = new Accounts(file, CHEAP);
+  assert.deepEqual([await b.eggOpens("Old-Door"), await b.eggOpens("old-door")], [true, false]);   // as it was
+  assert.equal(await b.seedEgg("Old-Door", "the private note"), "again");
+  assert.deepEqual([await b.eggOpens("Old-Door"), await b.eggOpens("old-door")], [true, true]);
+  assert.equal(await b.seedEgg("Old-Door", "the private note"), false);   // once
 });
 
 test("the egg's door gives a pass; a new password closes every pass the old one gave", async () => {

@@ -8,8 +8,18 @@ the DAEMONS playground until 2026-11-20, and it still serves that beside the sit
 
 ## EUDAIMONIA, so far
 
-**Its first pieces answer on port 4741**: the front page's frame, with THE DASHBOARD's place kept for what comes next,
-and **SIGN IN** beside it, with the accounts behind it. Every word on it is a DRAFT.
+**Its first pieces answer on port 4741**: **THE DASHBOARD**, the work under way drawn as the daemons doing it, and
+**SIGN IN** beside it, with the accounts behind it. Every word on it is a DRAFT.
+
+- **THE DASHBOARD** (E-1's first slice, read-only, for anyone who reaches the site). Each project's progress; **THE
+  LANES**, each drawn with its daemon at a keyboard while it has a ticket in progress and asleep when it has none, with
+  what it is at, what is next and what it closed lately; **WAITING ON YOU**, drawn with the player, the monkey, for every
+  ticket that needs the user's decision; and **THE RELEASES**, each opening its notes. A lane, a ticket or a release
+  opens in a modal, and FULL VIEW opens it alone in a new tab (`/#ticket=T-465`, `/#release=v11.411.1`, `/#lane=game`).
+  For now it reads the tickets from Redmine, read-only and a minute at a time, with the playground lane's key in
+  `~/.redmine.env`; PRAXIS's bridge (the companion's C-434) is to take its place. A lane's daemon is its agent account's
+  avatar: an admin gives one from the lane's modal. Answering a waiting ticket from the dashboard comes next
+  (`src/redmine.ts`, `src/releases.ts`, `web/dashboard.js`).
 
 - **The first sign-in is `admin` / `admin`, and it is changed at once.** Until it is, that password is taken only from
   this machine, a home network or the tailnet, with no proxy between, and the session it opens can do nothing but
@@ -21,7 +31,7 @@ and **SIGN IN** beside it, with the accounts behind it. Every word on it is a DR
 - **Every account picks a daemon** in YOUR ACCOUNT, from the daemons grouped by type, each group in its type's colour.
   Its sprite is the account's picture, and is to be its lane's on THE DASHBOARD. The daemons and their sprites are read
   from DAEMONS and the companion beside this repository, never copied here.
-- **THE EASTER EGG** is hidden on the front page, behind a password the admin keeps (below).
+- **THE EASTER EGG** is hidden on the front page, behind a riddle and a password the admin keeps (below).
 
 It keeps its accounts in `data/eudaimonia/accounts.json` (this machine's, mode 0600): passwords as scrypt hashes,
 sessions and keys as SHA-256 hashes of random bytes, so nothing there can be read back. A browser's change must come
@@ -30,7 +40,7 @@ address.
 
 ### THE EASTER EGG: your cart becomes a DAEMONS cart
 
-Somewhere on the front page a password is asked for. Then: **which cart do you own?** FIRERED, LEAFGREEN or both,
+A dim egg on the front page asks a riddle; its answer, in any case, is the password. Then: **which cart do you own?** FIRERED, LEAFGREEN or both,
 drawn as carts. The others leave, the chosen turn into **CONTENT** and **CONTEXT**, and a cookie remembers them, so the
 next visit opens on your carts (with a line to forget them and start again). A cart plays in **the playground's own
 player**, framed over the page: its saves, its companion and what's new, as at port 4740. It is made one of two ways:
@@ -40,9 +50,10 @@ player**, framed over the page: its saves, its companion and what's new, as at p
 | **YOUR OWN CART** | your FireRed or LeafGreen file (1.0 or Rev 1, as dumped from the cart), patched in your browser by the latest release's BPS patch, and checked | only the patch, which every release publishes anyway |
 | **THE RELEASE'S OWN** | the release's ROM, with the password and a tick that these are backups of carts you own | the ROM, from this machine, to its own networks |
 
-The password is kept only as a hash; a browser that gives it holds a pass (a cookie) for thirty days. Its first value
-is taken once, at the first run, from `$EUDAIMONIA_EGG` or the DAEMONS author's private notes, and never from a
-repository; **the admin changes it in ACCOUNTS**, and a new one closes every pass the old one gave. The patches and ROMs
+The password is kept only as a hash, folded to small letters so it is taken in any case; a browser that gives it holds
+a pass (a cookie) for thirty days. Its value comes from `$EUDAIMONIA_EGG` or the DAEMONS author's private notes, read
+at every start until the admin sets one, and never from a repository; **the admin changes it in ACCOUNTS**, and a new
+one closes every pass the old one gave. The patches and ROMs
 are read from DAEMONS' `ROM RELEASE/` when they are asked for, never kept here (`src/egg.ts`, `web/egg.js`,
 `web/bps.js`).
 

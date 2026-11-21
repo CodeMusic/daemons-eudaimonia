@@ -9,7 +9,10 @@
 //   * Every account picks a daemon as its avatar (avatars.ts): its sprite is the account's picture, and later its lane's
 //     group on the dashboard (C-411).
 //   * The admin sets THE EASTER EGG's password (C-437), kept here hashed like every other; its door gives a browser a
-//     pass, kept as a hash too, to play the release's own ROM (egg.ts).
+//     pass, kept as a hash too, to play the release's own ROM (egg.ts). Its answer is taken in any case (E-7, the user
+//     2026-11-21: "any case"), so it is folded to small letters before it is hashed or checked. Until the admin sets
+//     one, DAEMONS' private note on it is its source: a new value there replaces the old at the next start.
+//   * A lane's daemon on THE DASHBOARD (E-1) is its agent account's avatar: an agent named for the lane.
 //
 // Passwords are kept as scrypt hashes, sessions and keys as SHA-256 hashes of 32 random bytes: nothing here can be read
 // back. The file is data/eudaimonia/accounts.json, written whole through a temporary file and renamed (mode 0600).
@@ -28,7 +31,8 @@ export type Account = {
   disabled?: boolean; made: string; madeBy: string | null; seen?: string;
 };
 type Session = { hash: string; account: string; until: string; limited: boolean };
-type Data = { accounts: Account[]; sessions: Session[]; egg?: Hashed & { changed: string; by: string | null; seeded?: string };
+type Data = { accounts: Account[]; sessions: Session[];
+              egg?: Hashed & { changed: string; by: string | null; seeded?: string; folded?: boolean };
               passes?: { hash: string; until: string }[] };
 
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000, LIMITED_MS = 15 * 60 * 1000, EGG_PASS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -41,6 +45,8 @@ export class Refused extends Error {
   constructor(message: string, status = 400) { super(message); this.status = status; }
 }
 
+/** The egg's answer, in any case: Example, EXAMPLE and example are one. */
+export const fold = (pw: string) => String(pw || "").normalize("NFKC").toLowerCase();
 const sha = (s: string) => createHash("sha256").update(s).digest("base64url");
 const token = (prefix = "") => prefix + randomBytes(32).toString("base64url");
 const scrypt = (pw: string, salt: Buffer, n: number) =>
@@ -79,6 +85,10 @@ export class Accounts {
   }
 
   list() { return this.data.accounts.map(shown); }
+  /** THE DASHBOARD's lanes (E-1): each agent account that is open, by its name, with its daemon. Nothing else of it. */
+  agents(): Map<string, number | null> {
+    return new Map(this.data.accounts.filter((a) => a.kind === "agent" && !a.disabled).map((a) => [a.name, a.avatar]));
+  }
   get(id: string) { return this.data.accounts.find((a) => a.id === id) ?? null; }
   byName(name: string) { return this.data.accounts.find((a) => a.name === name.trim().toLowerCase()) ?? null; }
 
@@ -196,20 +206,28 @@ export class Accounts {
   async setEgg(by: Account, password: string) {
     this.mustBeAdmin(by);
     if (String(password || "").length < EGG_LEAST) throw new Refused(`The easter egg's password is at least ${EGG_LEAST} characters.`);
-    this.data.egg = { ...(await this.hash(password)), changed: this.iso(), by: by.id };
+    this.data.egg = { ...(await this.hash(fold(password))), changed: this.iso(), by: by.id, folded: true };
     this.data.passes = [];
     this.save();
     return this.egg();
   }
-  /** Its first value, at the first run only (main.ts reads it from DAEMONS' private notes): never once one is set. */
-  async seedEgg(password: string, from: string) {
-    if (this.data.egg || String(password || "").length < EGG_LEAST) return false;
-    this.data.egg = { ...(await this.hash(password)), changed: this.iso(), by: null, seeded: from };
+  /** Its value from DAEMONS' private note (main.ts, at every start): the first one, or a new one there, until the admin
+   *  sets their own in ACCOUNTS -- after that the note is never read again. A new value closes every pass. */
+  async seedEgg(password: string, from: string): Promise<false | "first" | "again"> {
+    if (String(password || "").length < EGG_LEAST) return false;
+    const e = this.data.egg;
+    // an old seeded hash, made before the fold, is made again even when the note has not changed: so it takes any case
+    if (e && (e.by !== null || !e.seeded || (e.folded && (await this.eggOpens(password))))) return false;
+    this.data.egg = { ...(await this.hash(fold(password))), changed: this.iso(), by: null, seeded: from, folded: true };
+    if (e) this.data.passes = [];
     this.save();
-    return true;
+    return e ? "again" : "first";
   }
   egg() { return { set: !!this.data.egg, changed: this.data.egg?.changed ?? null, seeded: this.data.egg?.seeded ?? null }; }
-  async eggOpens(password: string) { return !!this.data.egg && this.check(password, this.data.egg); }
+  async eggOpens(password: string) {
+    const e = this.data.egg;
+    return !!e && this.check(e.folded ? fold(password) : password, e);
+  }
 
   /** The egg's door: the password opens it, and gives this browser a pass (a cookie) to play the release's own ROM. */
   async eggPass(password: string) {

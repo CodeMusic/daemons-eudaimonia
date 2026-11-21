@@ -1,8 +1,9 @@
 # daemons-eudaimonia
 
 **EUDAIMONIA is to be built here**: the site where the companion's PRAXIS (the doing) and ARETE (the points) are used
-together. None of it is built yet ([its plan](https://github.com/CodeMusic/daemons-companion/blob/main/docs/PROJECTS.md),
-section 10). Its first pieces are built, on port 4741: the front page's frame and [Accounts and sign-in](Accounts-and-sign-in).
+together ([its plan](https://github.com/CodeMusic/daemons-companion/blob/main/docs/PROJECTS.md),
+section 10). Its first pieces are built, on port 4741: [THE DASHBOARD](The-dashboard), [Accounts and sign-in](Accounts-and-sign-in)
+and [the easter egg](The-easter-egg).
 Beside them the repository still serves what it was named for until 2026-11-20, **the DAEMONS playground**:
 
 **The game in a browser, for demos and beta tests**, from one URL. Choose an edition, start a new game or continue from
@@ -22,6 +23,7 @@ New to the game itself? **[MICRO-START](https://github.com/CodeMusic/DAEMONS/blo
 
 | page | what it covers |
 |---|---|
+| [THE DASHBOARD](The-dashboard) | EUDAIMONIA's front door: the lanes at work as their daemons, what waits on you, the releases |
 | [Accounts and sign-in](Accounts-and-sign-in) | EUDAIMONIA's first pieces: the first sign-in, people and agents, a daemon for each, THE EASTER EGG's password |
 | [The easter egg](The-easter-egg) | your cart becomes a DAEMONS cart: FIRERED or LEAFGREEN into CONTENT and CONTEXT, played in the playground's player |
 | [Running the playground](Running-the-playground) | `bindEudaimonia.sh`, its options, what it needs, and who it answers |

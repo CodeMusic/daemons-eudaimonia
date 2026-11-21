@@ -1,7 +1,7 @@
 <!doctype html>
-<!-- EUDAIMONIA's front page (C-439): THE DASHBOARD's frame (C-411, to come) with SIGN IN beside it, and the accounts
-     (C-436) in modals, so nothing leaves the page. THE EASTER EGG (C-437) is the dim cart in THE RELEASES' corner.
-     Served by src/server.ts; app.js and egg.js draw it. Every word DRAFT. -->
+<!-- EUDAIMONIA's front page (C-439): THE DASHBOARD (E-1) with SIGN IN beside it, and the accounts (C-436) in modals,
+     so nothing leaves the page. THE EASTER EGG (C-437, E-7) is the dim egg in THE RELEASES' corner.
+     Served by src/server.ts; app.js, dashboard.js and egg.js draw it. Every word DRAFT. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/style.css">
 <script type="module" src="/app.js"></script>
 <script type="module" src="/egg.js"></script>
+<script type="module" src="/dashboard.js"></script>
 </head>
 <body>
 <header class="top">
@@ -33,13 +34,16 @@
 <main>
   <section class="dashboard" aria-labelledby="dash-title">
     <h2 id="dash-title">THE DASHBOARD</h2>
-    <p class="dim">The work under way, drawn as the daemons doing it. It is being built.</p>
+    <p class="dim" id="dash-line">The work under way, drawn as the daemons doing it.</p>
+    <div class="progress" id="progress"></div>
     <div class="panels">
-      <article class="panel"><h3>THE LANES</h3><p class="dim">Each lane at work, drawn with its daemon.</p></article>
-      <article class="panel"><h3>WAITING ON YOU</h3><p class="dim">What only you can answer.</p></article>
-      <article class="panel"><h3>THE RELEASES</h3><p class="dim">Each one, and what it changed.</p>
-        <button id="egg-spot" class="egg-spot" aria-label="A cart, left here"><svg viewBox="0 0 160 112" aria-hidden="true">
-          <rect class="shell" x="4" y="4" width="152" height="104" rx="12"/><rect class="label" x="18" y="18" width="124" height="66" rx="6"/></svg></button>
+      <article class="panel wide-panel"><h3>THE LANES</h3><div class="lanes" id="lanes"></div></article>
+      <article class="panel waiting-panel"><h3>WAITING ON YOU</h3><div id="waiting"></div></article>
+      <article class="panel"><h3>THE RELEASES</h3><ol class="releases" id="releases"></ol>
+        <button id="egg-spot" class="egg-spot" aria-label="An egg, left here"><svg viewBox="0 0 24 30" aria-hidden="true">
+          <path class="shell" d="M12 1C5.6 1 1.5 11.5 1.5 18.6 1.5 25 6.2 29 12 29s10.5-4 10.5-10.4C22.5 11.5 18.4 1 12 1Z"/>
+          <circle class="speck" cx="8" cy="13" r="1.6"/><circle class="speck" cx="15" cy="9" r="1.1"/><circle class="speck" cx="16" cy="19" r="1.8"/>
+          <circle class="speck" cx="9" cy="22" r="1"/></svg></button>
       </article>
     </div>
   </section>
@@ -115,12 +119,18 @@
 </dialog>
 
 <dialog id="egg" class="wide egg" aria-labelledby="egg-title">
-  <div class="dialog-head"><h2 id="egg-title">SOMETHING IS HERE</h2><button data-close aria-label="Close">✕</button></div>
+  <div class="dialog-head"><h2 id="egg-title">SOMETHING STIRS IN HERE</h2><button data-close aria-label="Close">✕</button></div>
 
   <section id="egg-door" hidden>
-    <p>Something is kept here, and it asks for a password.</p>
+    <div class="egg-big" aria-hidden="true"><svg viewBox="0 0 24 30">
+      <path class="shell" d="M12 1C5.6 1 1.5 11.5 1.5 18.6 1.5 25 6.2 29 12 29s10.5-4 10.5-10.4C22.5 11.5 18.4 1 12 1Z"/>
+      <circle class="speck" cx="8" cy="13" r="1.6"/><circle class="speck" cx="15" cy="9" r="1.1"/><circle class="speck" cx="16" cy="19" r="1.8"/>
+      <circle class="speck" cx="9" cy="22" r="1"/></svg></div>
+    <blockquote class="riddle">This is a daemon that realized fate is a framework. It has many paths, and its current form
+      holds them all within potential.</blockquote>
+    <p class="dim small riddle-aside">Some people say the answer is 7 characters.</p>
     <form id="egg-door-form">
-      <label>The password <input name="password" type="password" autocomplete="off" required></label>
+      <label>The answer <input name="password" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
       <p class="error" role="alert"></p>
       <div class="actions"><button class="primary">OPEN</button></div>
     </form>
@@ -163,6 +173,25 @@
   <div class="player-bar"><b id="egg-player-what"></b><span class="dim" id="egg-player-wait" role="status"></span>
     <button id="egg-player-close">CLOSE</button></div>
   <div class="player-frame" id="egg-player-frame"></div>
+</dialog>
+
+<dialog id="lane" class="wide" aria-labelledby="lane-title">
+  <div class="dialog-head"><div class="lane-head"><span id="lane-scene"></span><div><h2 id="lane-title"></h2><p class="dim small" id="lane-line"></p></div></div>
+    <span><a id="lane-full" class="full-link" target="_blank" rel="noopener">FULL VIEW ↗</a><button data-close aria-label="Close">✕</button></span></div>
+  <div id="lane-body"></div>
+  <p class="lane-admin" id="lane-admin" hidden></p>
+</dialog>
+
+<dialog id="ticket" class="wide" aria-labelledby="ticket-title">
+  <div class="dialog-head"><h3 id="ticket-title" class="kicker"></h3>
+    <span><a id="ticket-full" class="full-link" target="_blank" rel="noopener">FULL VIEW ↗</a><button data-close aria-label="Close">✕</button></span></div>
+  <div id="ticket-body"></div>
+</dialog>
+
+<dialog id="release" class="wide" aria-labelledby="release-title">
+  <div class="dialog-head"><h2 id="release-title"></h2>
+    <span><a id="release-full" class="full-link" target="_blank" rel="noopener">FULL VIEW ↗</a><button data-close aria-label="Close">✕</button></span></div>
+  <div id="release-body"></div>
 </dialog>
 
 <dialog id="secret" aria-labelledby="secret-title">

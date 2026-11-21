@@ -1,9 +1,11 @@
 // EUDAIMONIA's front page: who is signed in, SIGN IN, the forced first password change, YOUR ACCOUNT (a daemon for an
 // avatar) and the admin's ACCOUNTS -- all in modals over THE DASHBOARD's frame (C-439, C-436). No library. THE EASTER
-// EGG is egg.js's.
+// EGG is egg.js's, THE DASHBOARD dashboard.js's (it asks this file who is here, and borrows the daemon picker).
 import { $, api, el } from "./ui.js";
 const LANES = ["game", "story", "audio", "art", "app", "hub", "esp32", "pi-zero", "playground", "docs", "ops"];
 let me = null, limited = false, groups = null;
+/** Who is signed in (dashboard.js): their account as the page sees it, or null. */
+export const whoami = () => me;
 
 const sprite = (id, size = 40) => (id == null ? el("span", { class: "blank", "aria-hidden": "true" })
   : el("img", { src: `/sprite/${id}.png`, width: size, height: size, alt: "", loading: "lazy" }));
@@ -32,6 +34,7 @@ async function refresh() {
     $("me-name").textContent = me.name.toUpperCase();
     $("admin-item").hidden = !me.admin;
   }
+  document.dispatchEvent(new CustomEvent("me"));
   if (me && limited) openChange(me.first);
 }
 
@@ -202,7 +205,17 @@ $("egg-form").addEventListener("submit", (ev) => {
   busy(f, async () => { await api("POST", "/api/egg", { password: f.password.value }); f.reset(); await drawEgg(); });
 });
 
-function showSecret(a, secret) {
+/** The daemon picker in its own modal, for dashboard.js's lanes: resolves when it closes. */
+export async function pickDaemon(title, chosen, onPick) {
+  await loadGroups();
+  $("pick-title").textContent = title;
+  const done = new Promise((resolve) => $("pick").addEventListener("close", resolve, { once: true }));
+  picker($("pick-picker"), chosen, async (id) => { await onPick(id); $("pick").close(); });
+  $("pick").showModal();
+  return done;
+}
+
+export function showSecret(a, secret) {
   $("secret-line").textContent = a.kind === "agent"
     ? `${a.name.toUpperCase()}'s key. The agent sends it as: Authorization: Bearer <key>`
     : `${a.name.toUpperCase()}'s one-time password. They choose their own the first time they sign in.`;
