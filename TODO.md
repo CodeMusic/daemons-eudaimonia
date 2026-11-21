@@ -1,0 +1,27 @@
+# TODO -- daemons-eudaimonia
+
+Work that has been **decided and not done** for EUDAIMONIA -- the site where the companion's PRAXIS and ARETE are used
+together, and the playground that plays the game in a browser beside it -- kept the way DAEMONS keeps its own
+(`DAEMONS/docs/TODO.md`): ids are permanent, a closed ticket is struck through with its commit, never deleted. Its
+plan, and the questions still **OPEN** in it, are in section 10 of the companion's `docs/PROJECTS.md`; a ticket waits
+on a question by naming it.
+
+**The table below is a mirror.** The tickets live in Redmine, in the `eudaimonia` project (a sub-project of CONTEXT /
+CONTENT beside `daemons` and `companion`), with ids E-1 onward. DAEMONS' `tools/tickets.py` rebuilds this table from
+it every night at 04:45 and commits it here, so a fresh clone can still read every ticket. Never edit a row by hand:
+open, claim and close tickets with the tool, from the DAEMONS checkout, as the `playground` lane:
+
+    python3 tools/tickets.py mine --lane playground --project eudaimonia
+    python3 tools/tickets.py new --lane playground --project eudaimonia --title "..." --from "the user, 2026-11-20"
+    python3 tools/tickets.py claim E-3 --lane playground --branch main
+    python3 tools/tickets.py close E-3 --lane playground --commit eudaimonia@<sha>
+
+The first four came from the companion on 2026-11-20 (C-411's first point): E-1 to E-4 were C-411, C-436, C-437 and
+C-439, which stay there, Superseded, each pointing here. Each one's See names its old id.
+
+| | Ticket | State | See |
+|---|---|---|---|
+| **E-1** | **THE DASHBOARD: the agents at work, in daemons-eudaimonia** (*the user, 2026-11-18: "an agentic dashboard for the development activity and overall progress"*): an agentic dashboard at dashboard.daemons.codemusic.ca, built in the daemons-eudaimonia repo (daemons-playground until C-438, no longer used for the game, which lives in the companion app): the Redmine roadmap's progress; a widget group per Redmine user (each lane), named by a daemon chosen in a Redmine custom field (e.g. 3 = RoverByte, with the Redmine user small beneath) and drawn with that daemon's sprite, animated by what the lane is doing (at a keyboard when coding, and so on); the releases listed, each opening its what's-changed; a hidden, password-locked way to launch the game in the browser (the playground's player). Later: PRs on GitHub reviewed by the lanes' daemons. To be discussed with the user before it is built. |  | C-411 (its id until 2026-11-20) |
+| ~~**E-2**~~ | **Accounts in EUDAIMONIA: the admin, people and AI agents, each one a daemon** (*the user, 2026-11-20*): The first sign-in is admin / admin, changed at once; because the site is public, that default answers only from this Mac, the home network or the tailnet until it is changed (a safety default, drafted). The admin makes human accounts and AI agent accounts -- each lane becomes an agent account, C-387's mind and machine line kept. Every account picks its avatar from the daemons, in a list grouped by category, and that daemon's sprite is its picture, its avatar and its lane's group on the dashboard, in place of C-411's Redmine custom field; the section waiting on the user keeps the player's sprite. The admin can change THE EASTER EGG's password. Builds on C-11's accounts; THE COMMONS's guardians and passkeys are there to reuse. |  | C-436 (its id until 2026-11-20) |
+| **E-3** | **THE EASTER EGG: your cart becomes a DAEMONS cart** (*the user, 2026-11-20*): A hidden spot on EUDAIMONIA's dashboard asks for a password (its first value is in DAEMONS' docs/private/, never in a ticket or a repository; kept hashed on the server; the admin changes it). Then: which cart do you own? FIRERED, LEAFGREEN or BOTH, drawn as cart art; the others leave, and the chosen transform into CONTENT and CONTEXT. A cookie remembers, so the next visit shows the carts you have, with a small line to clear it and start again. Clicking a cart plays it in the browser with the playground's mGBA player, two ways: from your own cart's file, patched there by the release's BPS patch (C-187's route: 1.0 or Rev 1, checked by hash, no game file sent); or, with the password and a box ticked agreeing these are backups of carts you own, the latest release's ROM directly. Every word DRAFT. |  | C-437 (its id until 2026-11-20) |
+| **E-4** | **EUDAIMONIA's front door: the dashboard first, sign-in, and spaces made public by choice** (*the user, 2026-11-20*): THE DASHBOARD (C-411) is the landing page for anyone, with SIGN IN beside it; signed in, or through any part marked public, you reach the spaces themselves. Every space -- a project, LIFE, a JOURNAL, a DREAM JOURNAL, LEARNING, RECIPES, any form -- has a setting for whether it is public (PRAXIS's PUBLIC reach, docs/PROJECTS.md 5), off unless chosen. The dashboard draws from PRAXIS, not Redmine: Redmine reaches it through the bridge's read-only mirror (C-434's first step) until it retires. Needs C-435 (the engine where the site can reach it) and C-436 (the accounts). |  | C-439 (its id until 2026-11-20) |
