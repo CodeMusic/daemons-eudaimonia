@@ -8,8 +8,9 @@ import { DONE_MOST, DONE_PAGE, HISTORY_MOST, HISTORY_TICKETS, LANES, LEDGER_MOST
          type Ticket } from "./redmine.ts";
 import { closedStates, fieldName, FORM_NAME } from "./work.ts";
 
-/** what the server reads the tickets through: Redmine's reader, or this one */
-export type Tickets = Pick<RedmineReader, "board" | "ticket" | "lane" | "forget">;
+/** what the server reads the tickets through: Redmine's reader, or this one. `forget` is awaited after an answer, so
+ *  the board the page loads next already shows it. */
+export type Tickets = Pick<RedmineReader, "board" | "ticket" | "lane"> & { forget(id: string): void | Promise<void> };
 /** a pull older than this marks the board stale */
 export const STALE_MS = 5 * 60 * 1000;
 
@@ -25,11 +26,11 @@ export class PraxisTickets implements Tickets {
   private readonly px: Praxis;
   private readonly now: () => number;
   private readonly pulled: () => number | null;
-  private readonly refresh: () => void;
+  private readonly refresh: () => void | Promise<void>;
 
   /** `pulled`: when this replica last took from the one that mirrors Redmine (null: it is that one, or there is none);
    *  `refresh`: ask for what changed now, rather than at the next minute (after an answer) */
-  constructor(p: Praxis, o: { now?: () => number; pulled?: () => number | null; refresh?: () => void } = {}) {
+  constructor(p: Praxis, o: { now?: () => number; pulled?: () => number | null; refresh?: () => void | Promise<void> } = {}) {
     this.px = p; this.now = o.now ?? (() => Date.now()); this.pulled = o.pulled ?? (() => null); this.refresh = o.refresh ?? (() => {});
   }
 
@@ -109,9 +110,9 @@ export class PraxisTickets implements Tickets {
     };
   }
 
-  /** the mirror is the only writer, so there is nothing to forget: an answer arrives with the next pull, which this
-   *  asks for at once */
-  forget(_id: string) { this.refresh(); }
+  /** the mirror is the only writer, so there is nothing to forget: an answer arrives with a pull, which this asks for
+   *  at once and waits on (a second or two: the always-on replica mirrors, this one takes it) */
+  async forget(_id: string) { await this.refresh(); }
 
   async lane(name: string): Promise<LaneDetail | null> {
     if (!(LANES as readonly string[]).includes(name)) return null;
@@ -159,6 +160,6 @@ export function eitherTickets(praxis: PraxisTickets | null, redmine: Tickets | n
     board: () => pick().board(),
     ticket: (id) => pick().ticket(id),
     lane: (name) => pick().lane(name),
-    forget: (id) => { praxis.forget(id); redmine?.forget(id); },
+    forget: async (id) => { redmine?.forget(id); await praxis.forget(id); },
   };
 }

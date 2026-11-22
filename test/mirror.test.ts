@@ -174,6 +174,11 @@ test("another replica pulls what it lacks and reads the same board; it never giv
   assert.deepEqual((await via.board()).projects, (await new PraxisTickets(a).board()).projects);
   assert.equal((await pull(b, "http://roverbyteseer:4742", { fetch: f })).sent, 0, "a second pull takes nothing");
   assert.throws(() => remote("http://roverbyteseer:4742", { fetch: f }).receive([]), /never gives/);
+  // after an answer, forgetting waits for the pull it asks for
+  let refreshed = false;
+  const waits = new PraxisTickets(b, { refresh: async () => { await new Promise((r) => setTimeout(r, 5)); refreshed = true; } });
+  await eitherTickets(waits, null)!.forget("T-12");
+  assert.equal(refreshed, true);
   // a pull an hour old marks the board stale
   const old = new PraxisTickets(b, { now: () => 3_600_000 + 1, pulled: () => 1 });
   assert.equal((await old.board()).stale, true);

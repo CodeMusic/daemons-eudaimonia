@@ -261,7 +261,7 @@ export function makeServer(o: Options): Server {
       if (!o.answers) throw new Refused("This site has no key to answer with.", 503);
       const r = await o.answers.answer(answer[1], { text: String(body.text ?? ""), keep: body.keep === true,
                                                      choice: body.choice == null ? null : String(body.choice) });
-      o.redmine?.forget(answer[1]);
+      await o.redmine?.forget(answer[1]);   // E-9: PRAXIS takes the answer before the page loads the board again
       log(`${addr} ${me.name} answered ${r.ticket}${body.keep === true ? ", which still waits on the user" : `: back to ${r.status}`}`);
       return json(res, r);
     }

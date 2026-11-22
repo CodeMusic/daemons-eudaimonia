@@ -96,9 +96,12 @@ const takeFromReplica = async () => {
     pullSaid = why;
   }
 };
-// after an answer: the always-on replica mirrors at once, and this one takes it, so the board shows it within seconds
-const refresh = () => { if (REPLICA !== "off") void fetch(REPLICA + "/px/mirror", { method: "POST", signal: AbortSignal.timeout(60_000) })
-  .catch(() => {}).then(takeFromReplica); };
+// after an answer: the always-on replica mirrors at once and this one takes it, before the page loads the board again
+const refresh = async () => {
+  if (REPLICA === "off") return;
+  await fetch(REPLICA + "/px/mirror", { method: "POST", signal: AbortSignal.timeout(15_000) }).catch(() => {});
+  await takeFromReplica();
+};
 const praxisTickets = new PraxisTickets(local, { pulled: () => (REPLICA === "off" ? null : pulledAt ?? 0), refresh });
 const tickets = eitherTickets(praxisTickets, redmine);
 void takeFromReplica();
