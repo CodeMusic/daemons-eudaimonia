@@ -33,7 +33,8 @@ import { extname, join } from "node:path";
 import { type Account, type Accounts, type Kind, Refused, shown } from "./accounts.ts";
 import type { Avatars } from "./avatars.ts";
 import { type Egg, isEdition } from "./egg.ts";
-import { type RedmineReader, TICKET_ID, waitsOnUser } from "./redmine.ts";
+import { TICKET_ID, waitsOnUser } from "./redmine.ts";
+import type { Tickets } from "./tickets.ts";
 import { type Answers, ticketChoices } from "./answers.ts";
 import type { Releases } from "./releases.ts";
 import { allowed, home, ourHost } from "./reach.ts";
@@ -49,8 +50,9 @@ const HEADERS = {
 
 export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?: (line: string) => void; now?: () => number;
                         egg?: Egg; player?: number;
-                        /** E-1: the tickets (null: no key to read them with), the releases, the companion's art folder */
-                        redmine?: RedmineReader | null; releases?: Releases; art?: string;
+                        /** E-1: the tickets (null: no key to read them with) -- PRAXIS's replica once it holds them (E-9),
+                         *  Redmine until then -- the releases, the companion's art folder */
+                        redmine?: Tickets | null; releases?: Releases; art?: string;
                         /** E-1's second slice: the one write, answering a ticket that waits on the user (null: no key) */
                         answers?: Answers | null };
 

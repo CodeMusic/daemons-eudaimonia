@@ -15,5 +15,8 @@
   "devDependencies": {
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@daemons/praxis": "github:CodeMusic/daemons-praxis#v0.3.1"
   }
 }

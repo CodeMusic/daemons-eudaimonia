@@ -13,11 +13,14 @@
 // and read again at every start until the admin sets their own in ACCOUNTS. THE DASHBOARD (E-1) reads the tickets from
 // Redmine with the playground lane's key, from ~/.redmine.env (or $REDMINE_ENV): never logged, never sent to a page.
 // An admin answers a ticket that waits on the user with the user's own Redmine key there, REDMINE_KEY_USER, or until
-// the user adds it, the sessions' REDMINE_API_KEY (E-1).
+// the user adds it, the sessions' REDMINE_API_KEY (E-1). E-9: once this site's PRAXIS replica (praxis.sqlite, beside the
+// accounts) has pulled the mirrored tickets from the always-on one ($PRAXIS_REPLICA, or http://roverbyteseer:4742; "off"
+// for none), the dashboard reads them there, and Redmine only until then.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { Accounts } from "./accounts.ts";
 import { Avatars } from "./avatars.ts";
@@ -26,6 +29,9 @@ import { RedmineReader, redmineEnv } from "./redmine.ts";
 import { Answers, answersEnv } from "./answers.ts";
 import { Releases } from "./releases.ts";
 import { makeServer } from "./server.ts";
+import { px, type Db } from "./praxis.ts";
+import { pull } from "./replica.ts";
+import { eitherTickets, PraxisTickets } from "./tickets.ts";
 
 const ROOT = dirname(dirname(realpathSync(fileURLToPath(import.meta.url))));
 const args = process.argv.slice(2);
@@ -60,7 +66,7 @@ const egg = new Egg(RELEASES);
 const envFile = process.env.REDMINE_ENV || join(homedir(), ".redmine.env");
 const rm = existsSync(envFile) ? redmineEnv(readFileSync(envFile, "utf8")) : null;
 const redmine = rm ? new RedmineReader(rm.url, rm.key) : null;
-say(redmine ? `THE DASHBOARD reads the tickets from ${rm!.url}, read-only, as the playground lane`
+say(redmine ? `THE DASHBOARD reads the tickets from PRAXIS once its replica holds them, and from ${rm!.url} until then (read-only, as the playground lane)`
             : `THE DASHBOARD has no tickets: no REDMINE_URL and REDMINE_KEY_PLAYGROUND in ${envFile}`);
 const aw = existsSync(envFile) ? answersEnv(readFileSync(envFile, "utf8")) : null;
 const answers = aw ? new Answers(aw.url, aw.key, { as: aw.as }) : null;
@@ -70,8 +76,36 @@ say(!answers ? `nobody can answer from THE DASHBOARD: neither REDMINE_KEY_USER n
 const latest = egg.latest();
 say(latest ? `THE EASTER EGG's carts play ${latest.name}, in the playground's player on port ${PLAYER}` : `no release in ${RELEASES}: the egg's carts have nothing to play`);
 
+// E-9: PRAXIS -- this site's replica, taking from the always-on one every minute (replica.ts)
+const REPLICA = process.env.PRAXIS_REPLICA || "http://roverbyteseer:4742";
+let pulledAt: number | null = null, pullSaid = "";
+mkdirSync(data, { recursive: true });
+const pxdb = new DatabaseSync(join(data, "praxis.sqlite"));
+pxdb.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000");
+const local = new px.Praxis(pxdb as unknown as Db, { actor: "eudaimonia" });
+const takeFromReplica = async () => {
+  if (REPLICA === "off") return;
+  try {
+    const r = await pull(local, REPLICA);
+    pulledAt = Date.now();
+    if (r.sent || pullSaid) say(`PRAXIS: took ${r.sent} events from ${REPLICA}`);
+    pullSaid = "";
+  } catch (e) {
+    const why = (e as Error).message;
+    if (why !== pullSaid) say(`PRAXIS: ${REPLICA} can't be reached (${why}); the dashboard shows the last pull${local.spaces().length ? "" : ", and Redmine until there is one"}`);
+    pullSaid = why;
+  }
+};
+// after an answer: the always-on replica mirrors at once, and this one takes it, so the board shows it within seconds
+const refresh = () => { if (REPLICA !== "off") void fetch(REPLICA + "/px/mirror", { method: "POST", signal: AbortSignal.timeout(60_000) })
+  .catch(() => {}).then(takeFromReplica); };
+const praxisTickets = new PraxisTickets(local, { pulled: () => (REPLICA === "off" ? null : pulledAt ?? 0), refresh });
+const tickets = eitherTickets(praxisTickets, redmine);
+void takeFromReplica();
+setInterval(() => void takeFromReplica(), 60_000);
+
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
-                           redmine, answers, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
+                           redmine: tickets, answers, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

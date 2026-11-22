@@ -60,8 +60,30 @@ one closes every pass the old one gave. The patches and ROMs
 are read from DAEMONS' `ROM RELEASE/` when they are asked for, never kept here (`src/egg.ts`, `web/egg.js`,
 `web/bps.js`).
 
-It runs on **Node 22.18 or newer**, which runs its TypeScript (`src/`) as it is: there is nothing to install to run it.
-`npm test` runs its tests the same way; `npm install` once fetches the type checker, for `npm run typecheck`.
+It runs on **Node 22.18 or newer**, which runs its TypeScript (`src/`) as it is. Its one package is **PRAXIS's engine**,
+[daemons-praxis](https://github.com/CodeMusic/daemons-praxis), pinned by tag in `package.json`: `./bindEudaimonia.sh`
+fetches it (`npm ci`) the first time and whenever the pin moves. The engine is TypeScript too, and Node will not strip
+types under `node_modules`, so `src/praxis.ts` loads it through a small hook of Node's own. `npm test` runs the tests;
+`npm install` once fetches the type checker, for `npm run typecheck`.
+
+### The tickets, in PRAXIS (E-9)
+
+THE DASHBOARD draws its tickets from **PRAXIS**, not from Redmine. Getting off Redmine takes three steps, the last one
+the user's call: **the mirror** (E-9, this), **tickets here** (E-10: the list, the board, the roadmap, a ticket's page
+and editing), then **the cut-over** (E-11: `tools/tickets.py` talks to PRAXIS, and Redmine stays as a read-only archive).
+
+- **The always-on replica** runs on roverbyteseer beside Redmine: `./bindEudaimonia.sh replica` (port 4742;
+  `replica always` keeps it running as a login agent). Every two minutes it mirrors Redmine's three projects into
+  PRAXIS (`src/mirror.ts`): each project a space made from the WORK form (`src/work.ts`), each ticket an item that keeps
+  its id (T-581), each journal's words a note with its own time and author, each relation a link. Closing a ticket
+  pays its lane the kind's ARETE once, in PRAXIS's ledger (DRAFT numbers: a Job 5, a Bug 3). It only reads Redmine and
+  asks only for what changed since the last run.
+- **This site keeps a replica of its own** (`data/eudaimonia/praxis.sqlite`) and takes what it lacks from the always-on
+  one every minute (`src/replica.ts`; `$PRAXIS_REPLICA`, default `http://roverbyteseer:4742`, `off` for none). Away from
+  home, the dashboard shows the tickets as they stood at the last pull, marked stale after five minutes. Until the first
+  pull has brought all three spaces, it reads Redmine as before.
+- Three of the oldest tickets (`T-183b`, `T-184a`, `T-185a`) have a letter in their number, which a handle cannot
+  hold, so they are not mirrored; the cut-over has to decide what they become.
 
 ## The DAEMONS playground
 

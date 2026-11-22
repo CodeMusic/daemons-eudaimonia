@@ -13,6 +13,8 @@
 #   ./bindEudaimonia.sh playground ...  the playground alone, with the options above
 #   ./bindEudaimonia.sh always          keep both running: started at login, started again if they stop (a login agent)
 #   ./bindEudaimonia.sh never           stop doing that
+#   ./bindEudaimonia.sh replica [--port N]  PRAXIS's always-on replica alone, mirroring Redmine (E-9; roverbyteseer, 4742)
+#   ./bindEudaimonia.sh replica always|never  keep the replica running as a login agent, or stop doing that
 #
 # It reads the ROMs from DAEMONS beside this repository (../DAEMONS, or $DAEMONS_ROOT) and answers only this machine,
 # a private network and the tailnet. The COMPANION tab is a companion of the playground's own, one for each build,
@@ -23,7 +25,7 @@
 # first is admin, its password admin, taken only from home and changed at once. Ctrl-C stops them all.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")"
-case "${1:-}" in -h|--help|help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+case "${1:-}" in -h|--help|help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 
 # -- always / never: the playground's server as a login agent (2026-10-28: it had stopped, and a tester's link went nowhere).
 # launchd starts it at login and again if it stops; its output goes to data/playground.log, where a tester's device
@@ -69,7 +71,8 @@ if [[ "${1:-}" == never ]]; then
   exit 0
 fi
 
-# -- EUDAIMONIA runs on Node 22.18 or newer, which runs its TypeScript as it is: no package to install
+# -- EUDAIMONIA runs on Node 22.18 or newer, which runs its TypeScript as it is. Its one package is PRAXIS's engine
+# (E-9, @daemons/praxis, pinned by tag): fetched by npm the first time, and again whenever the pin moves.
 site_node() {
   local n v major minor
   for n in "$(command -v node 2>/dev/null || true)" /opt/homebrew/opt/node@24/bin/node /opt/homebrew/opt/node@22/bin/node; do
@@ -80,13 +83,59 @@ site_node() {
   done
   return 1
 }
+need_engine() {   # the engine npm last installed is the commit the lockfile pins, or it is fetched again
+  local npm want have; npm="$(dirname "$NODE")/npm"
+  want="$("$NODE" -p 'require("./package-lock.json").packages["node_modules/@daemons/praxis"]?.resolved ?? ""' 2>/dev/null || true)"
+  have="$("$NODE" -p 'require("./node_modules/.package-lock.json").packages["node_modules/@daemons/praxis"]?.resolved ?? ""' 2>/dev/null || true)"
+  if [[ ! -f node_modules/@daemons/praxis/package.json || -z "$have" || "$want" != "$have" ]]; then
+    echo "bindEudaimonia: fetching PRAXIS's engine (npm ci)" >&2
+    PATH="$(dirname "$NODE"):$PATH" "$npm" ci --no-audit --no-fund >&2 || { echo "bindEudaimonia: npm ci failed" >&2; return 1; }
+  fi
+}
+REPLICA_AGENT="$HOME/Library/LaunchAgents/ca.codemusic.praxis-replica.plist"
 case "${1:-}" in
   site) shift; NODE="$(site_node)" || { echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer" >&2; exit 69; }
-        exec "$NODE" src/main.ts "$@" ;;
+        need_engine; exec "$NODE" src/main.ts "$@" ;;
+  replica) shift
+        if [[ "${1:-}" == always ]]; then
+          mkdir -p data "$(dirname "$REPLICA_AGENT")"
+          NODE="$(site_node)" || { echo "bindEudaimonia: the replica needs Node 22.18 or newer" >&2; exit 69; }
+          cat > "$REPLICA_AGENT" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ca.codemusic.praxis-replica</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/bash</string><string>$PWD/bindEudaimonia.sh</string><string>replica</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardOutPath</key><string>$PWD/data/praxis.log</string>
+  <key>StandardErrorPath</key><string>$PWD/data/praxis.log</string>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>$(dirname "$NODE"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+</dict>
+</plist>
+PLIST
+          plutil -lint "$REPLICA_AGENT" >/dev/null
+          launchctl bootout "gui/$(id -u)" "$REPLICA_AGENT" 2>/dev/null || true
+          launchctl bootstrap "gui/$(id -u)" "$REPLICA_AGENT"
+          echo "bindEudaimonia: PRAXIS's replica now runs whenever you are logged in. Log: data/praxis.log   Undo: ./bindEudaimonia.sh replica never"
+          exit 0
+        fi
+        if [[ "${1:-}" == never ]]; then
+          launchctl bootout "gui/$(id -u)" "$REPLICA_AGENT" 2>/dev/null || true
+          rm -f "$REPLICA_AGENT"
+          echo "bindEudaimonia: PRAXIS's replica no longer starts by itself."
+          exit 0
+        fi
+        NODE="$(site_node)" || { echo "bindEudaimonia: the replica needs Node 22.18 or newer" >&2; exit 69; }
+        need_engine; exec "$NODE" src/replica_main.ts "$@" ;;
   playground) shift; exec python3 server/playground.py "$@" ;;
 esac
-if ! NODE="$(site_node)"; then
-  echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer; the playground runs alone" >&2
+if ! NODE="$(site_node)" || ! need_engine; then
+  echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer and PRAXIS's engine; the playground runs alone" >&2
   exec python3 server/playground.py "$@"
 fi
 

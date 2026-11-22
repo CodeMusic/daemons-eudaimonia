@@ -6,5 +6,5 @@ __pycache__/
 *.srm
 # the browser's saves and the playground's own companions (their databases and logs): this machine's, never committed
 data/
-# the type checker, installed by npm install for npm run typecheck; the site itself needs no package
+# PRAXIS's engine (npm ci, from package-lock.json) and the type checker (npm install, for npm run typecheck)
 node_modules/

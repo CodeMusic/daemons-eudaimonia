@@ -15,15 +15,17 @@ export const PROJECTS = [
 ] as const;
 export const LANES = ["game", "story", "audio", "art", "app", "hub", "esp32", "pi-zero", "playground", "docs", "ops"] as const;
 /** The fields a ticket's modal shows, in this order (tools/tickets.py's FIELD_NAMES, less its bookkeeping). */
-const SHOWN = ["State", "Blocked on", "Why not yet", "See", "Where", "From", "Commits", "Branch", "Closed by"];
+export const SHOWN = ["State", "Blocked on", "Why not yet", "See", "Where", "From", "Commits", "Branch", "Closed by"];
 export const TICKET_ID = /^[TCE]-\d{1,5}$/;
 /** E-6, DRAFT: ARETE a lane earns for a ticket it finished, by the ticket's kind (Redmine's tracker), paid once per
  *  close and never taken back for a quiet day -- PRAXIS's rule (companion docs/PROJECTS.md 6) on Redmine's tickets until
  *  the bridge (C-434) brings PRAXIS's own ledger, and these numbers with it. */
 export const ARETE_DRAFT: Record<string, number> = { Job: 5, Bug: 3 };
 export const ARETE_OTHER = 2;
-const LEDGER_MOST = 25, HISTORY_TICKETS = 10, HISTORY_MOST = 20, DONE_PAGE = 10, WEEK_MS = 7 * 86400 * 1000;
-const TTL_MS = 60 * 1000, TIMEOUT_MS = 15 * 1000, CLOSED_RECENT = 100, NEXT_MOST = 5, DONE_MOST = 3;
+/** how much each view shows -- the PRAXIS reader (tickets.ts) shows the same */
+export const LEDGER_MOST = 25, HISTORY_TICKETS = 10, HISTORY_MOST = 20, DONE_PAGE = 10, WEEK_MS = 7 * 86400 * 1000;
+export const NEXT_MOST = 5, DONE_MOST = 3;
+const TTL_MS = 60 * 1000, TIMEOUT_MS = 15 * 1000, CLOSED_RECENT = 100;
 
 type Field = { id: number; name: string; value: string | null };
 type Issue = {
