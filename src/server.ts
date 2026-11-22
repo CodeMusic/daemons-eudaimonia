@@ -32,6 +32,10 @@
 //   POST /api/space/<PREFIX>/items {kind?, title, description?, lane?, priority?, order?, ...}   (signed in) a ticket
 //   POST /api/item/<HANDLE> {action: set | state | note, field?, value?, state?, text?}   (signed in) a change
 //
+// WORKING MEMORY for the agents (E-12, mind.ts): what each lane's daemon has in mind now, written as the lane by
+// tools/tickets.py with the lane's own Redmine key (X-Redmine-Key), shown on its page and tile to someone signed in:
+//   GET  /api/mind/<lane>            what it holds        POST /api/mind/<lane> {hold, about?, from?} or {letGo: about | true}
+//
 // An agent calls the API with `Authorization: Bearer <its key>`; a person's browser with the session cookie. A POST
 // from a browser must come from a page of this site (its Origin is this Host), as JSON -- another site's page cannot
 // sign anyone in, out or anywhere else.
@@ -46,6 +50,7 @@ import type { Tickets } from "./tickets.ts";
 import { actorOf, type Spaces } from "./spaces.ts";
 import { type Answers, ticketChoices } from "./answers.ts";
 import type { Releases } from "./releases.ts";
+import type { Minds } from "./mind.ts";
 import { allowed, home, ourHost } from "./reach.ts";
 
 export const COOKIE = "eudaimonia", EGG_COOKIE = "eudaimonia-egg";
@@ -65,7 +70,9 @@ export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?:
                         /** E-1's second slice: the one write, answering a ticket that waits on the user (null: no key) */
                         answers?: Answers | null;
                         /** E-10: every space PRAXIS holds, and changes to the site's own (null: no PRAXIS here) */
-                        spaces?: Spaces | null };
+                        spaces?: Spaces | null;
+                        /** E-12: the lanes' working memory, and which lane a Redmine key is (null: none kept here) */
+                        minds?: Minds | null; laneOf?: ((key: string) => Promise<string | null>) | null };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -132,6 +139,20 @@ export function makeServer(o: Options): Server {
     }
 
     if (!path.startsWith("/api/")) return notFound(res);
+    // E-12: a lane's working memory, by the lane itself -- its Redmine key proves which, never an account's
+    const mindAt = /^\/api\/mind\/([a-z0-9-]{1,20})$/.exec(path);
+    if (mindAt && (method === "GET" || method === "POST")) {
+      if (!o.minds || !o.laneOf) throw new Refused("This site keeps no working memory.", 503);
+      const key = String(req.headers["x-redmine-key"] ?? ""), lane = key ? await o.laneOf(key) : null;
+      if (!lane || lane !== mindAt[1]) throw new Refused("Only the lane itself, with its own Redmine key, keeps its working memory.", 403);
+      if (method === "GET") return json(res, { lane, held: o.minds.held(lane) });
+      const b = await read(req);
+      if (b.letGo !== undefined) return json(res, { lane, held: o.minds.letGo(lane, b.letGo === true ? undefined : String(b.letGo)) });
+      if (typeof b.hold !== "string" || !b.hold.trim()) throw new Refused("Send {hold: words, about?, from?} or {letGo: about | true}.", 400);
+      log(`${lane} holds something in mind`);   // never the words: a handoff's are private
+      return json(res, { lane, held: o.minds.hold(lane, b.hold, { about: typeof b.about === "string" ? b.about : undefined,
+                                                                  from: typeof b.from === "string" ? b.from : undefined }) });
+    }
     const bearer = /^Bearer (\S+)$/.exec(req.headers.authorization ?? "")?.[1] ?? null;
     if (method !== "GET" && method !== "HEAD" && !bearer) {
       // a browser's POST: from this site's own page, as JSON
@@ -142,6 +163,8 @@ export function makeServer(o: Options): Server {
     const who: Who = o.accounts.who(cookie(req, COOKIE), bearer);
     if (bearer && !who) throw new Refused("That key opens no account.", 401);
     const body = method === "POST" ? await read(req) : {};
+    const inside = !!who && !who.limited;   // E-12: a lane's working memory is shown to someone signed in only
+    const mindOf = (lane: string) => (inside && o.minds ? o.minds.held(lane) : null);
 
     if (path === "/api/me" && method === "GET")
       return json(res, { account: who ? shown(who.account) : null, limited: !!who?.limited, avatars: o.avatars.count });
@@ -174,7 +197,8 @@ export function makeServer(o: Options): Server {
       const board = await o.redmine.board(), agents = o.accounts.agents();
       return json(res, { board: { ...board, lanes: board.lanes.map((l) => {
         const daemon = agents.get(l.lane) ?? null;
-        return { ...l, account: agents.has(l.lane), daemon, daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null };
+        return { ...l, account: agents.has(l.lane), daemon, daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null,
+                 mind: mindOf(l.lane) };
       }) } });
     }
     const ticket = /^\/api\/ticket\/([A-Z]-[0-9]+)$/.exec(path);
@@ -192,7 +216,7 @@ export function makeServer(o: Options): Server {
       if (!l) throw new Refused(`No lane ${lane[1]} here.`, 404);
       const agents = o.accounts.agents(), daemon = agents.get(l.lane) ?? null;
       return json(res, { lane: { ...l, account: agents.has(l.lane), daemon,
-                                 daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null } });
+                                 daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null, mind: mindOf(l.lane) } });
     }
     // ---- THE SPACES (E-10): read by anyone, a space of the site's own only when signed in or public -----------------
     const signedIn = !!who && !who.limited;

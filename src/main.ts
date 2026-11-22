@@ -32,6 +32,7 @@ import { makeServer } from "./server.ts";
 import { px, type Db } from "./praxis.ts";
 import { give, pull } from "./replica.ts";
 import { Spaces } from "./spaces.ts";
+import { laneKeys, Minds } from "./mind.ts";
 import { eitherTickets, PraxisTickets } from "./tickets.ts";
 
 const ROOT = dirname(dirname(realpathSync(fileURLToPath(import.meta.url))));
@@ -109,7 +110,7 @@ const tickets = eitherTickets(praxisTickets, redmine);
 let giveSaid = "", giving: ReturnType<typeof setTimeout> | null = null;
 const giveToReplica = async () => {
   if (REPLICA === "off") return;
-  const own = spaces.list(true).filter((s) => !s.mirrored).map((s) => s.id);
+  const own = [...spaces.list(true).filter((s) => !s.mirrored).map((s) => s.id), ...minds.ids()];   // E-12: the lanes' minds too
   try {
     const r = await give(local, REPLICA, own);
     if (r.sent) say(`PRAXIS: gave ${r.sent} events of the site's own spaces to ${REPLICA}`);
@@ -120,13 +121,17 @@ const giveToReplica = async () => {
     giveSaid = why;
   }
 };
-const spaces = new Spaces(local, { changed: () => { if (giving) clearTimeout(giving); giving = setTimeout(() => void giveToReplica(), 1000); } });
+const soon = () => { if (giving) clearTimeout(giving); giving = setTimeout(() => void giveToReplica(), 1000); };
+const spaces = new Spaces(local, { changed: soon });
+// E-12: each lane's WORKING MEMORY, written by tools/tickets.py as the lane -- its Redmine key asked of Redmine
+const minds = new Minds(local, { changed: soon });
+const laneOf = rm ? laneKeys(rm.url) : null;
 const exchange = async () => { await takeFromReplica(); await giveToReplica(); };
 void exchange();
 setInterval(() => void exchange(), 60_000);
 
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
-                           redmine: tickets, answers, spaces, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
+                           redmine: tickets, answers, spaces, minds, laneOf, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

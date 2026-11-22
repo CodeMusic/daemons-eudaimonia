@@ -75,7 +75,18 @@ function laneTile(l) {
                         "aria-label": `${l.daemonName ?? l.lane}, the ${l.lane} lane: ${what}` },
     scene,
     el("span", { class: "who" }, el("b", {}, (l.daemonName ?? l.lane).toUpperCase()), el("small", {}, `lane ${l.lane}`)),
-    el("span", { class: "what" }, working ? inline(`${l.working[0].id} ${l.working[0].title}`) : what));
+    el("span", { class: "what" }, working ? inline(`${l.working[0].id} ${l.working[0].title}`) : what),
+    l.mind?.length ? el("span", { class: "mind", title: l.mind.map((h) => h.words).join("\n") }, `IN MIND · ${l.mind[0].words}`) : null);
+}
+
+/** E-12: what a lane's daemon has in mind now -- its WORKING MEMORY, written by its sessions as they stop (tickets.py
+ *  mind), about seven at most, the most lately thought of first. Shown to someone signed in only. Every word DRAFT. */
+function inMind(held) {
+  if (held == null) return [];
+  return [el("h3", {}, "IN MIND"), held.length
+    ? el("ul", { class: "mind-list" }, held.map((h) => el("li", {}, el("span", {}, h.words),
+        el("small", { class: "dim" }, [h.from && h.from.toUpperCase(), ago(h.at)].filter(Boolean).join(" · ")))))
+    : el("p", { class: "dim" }, "Nothing held just now: its sessions hold what is in flight, what waits on you and what comes next as they stop.")];
 }
 
 function drawWaiting() {
@@ -156,6 +167,7 @@ async function openLane(name) {
       v.projects.length ? projects : el("p", { class: "dim" }, "No ticket has been given to it yet."),
       el("h3", {}, "ITS ARETE"), arete),
     el("section", { class: "staff-main" },
+      ...inMind(v.mind),
       ...section("AT WORK", v.working, "Nothing in progress: it is asleep."),
       ...section("NEXT", v.next, "Nothing ready for it."),
       ...(v.waiting.length ? section("WAITING", v.waiting, "") : []),

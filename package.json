@@ -17,6 +17,6 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@daemons/praxis": "github:CodeMusic/daemons-praxis#v0.3.1"
+    "@daemons/praxis": "github:CodeMusic/daemons-praxis#v0.4.0"
   }
 }

@@ -99,6 +99,16 @@ a new tab (`/#space=C&view=board`). A ticket opens as its own page: every field 
   or an agent (by its key: `Authorization: Bearer ...`), and goes to the always-on replica within a second. That
   replica refuses anything in a mirrored space. A space of your own is shown only to the signed in, unless made public.
 
+### WORKING MEMORY: what each lane has in mind (E-12)
+
+Each lane's daemon keeps what it has in mind now -- what a session's handoff holds: in flight, waiting on the user,
+next -- in a space of PRAXIS's WORKING MEMORY form (C-469): about seven things, each about one thing and rewritten when
+held again, the least rehearsed let go when a new one comes. A session writes it as its lane with DAEMONS'
+`tools/tickets.py mind --lane L --hold "..." --about in-flight` (`--let-go` to clear), and EUDAIMONIA asks Redmine which
+lane its key is (`POST /api/mind/<lane>`, the key in `X-Redmine-Key`). It shows as **IN MIND** on the lane's page and its
+tile on THE DASHBOARD, **to someone signed in only**: a handoff carries private material, so the space's reach is home
+and is never made public. It goes to the always-on replica with the spaces of your own.
+
 ## The DAEMONS playground
 
 **An all-in-one harness to demo and beta test [DAEMONS](https://github.com/CodeMusic/DAEMONS)**, the whole game and

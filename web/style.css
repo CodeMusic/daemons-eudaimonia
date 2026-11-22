@@ -102,6 +102,10 @@ code#secret-value { display: block; padding: 12px; background: var(--bg); border
 .lane .who small, .lane .what { font-size: 11px; color: var(--dim); }
 .lane .what { max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .lane.working .what { color: var(--text); }
+/* E-12: what a lane has in mind */
+.lane .mind { max-width: 100%; font-size: 10px; letter-spacing: .04em; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mind-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mind-list li { display: flex; flex-direction: column; gap: 1px; padding-left: 10px; border-left: 2px solid rgb(233 196 106 / .45); }
 .scene { position: relative; display: flex; flex-direction: column; align-items: center; width: 96px; }
 .scene .sprite { width: 64px; height: 64px; image-rendering: pixelated; position: relative; z-index: 1; }
 .scene .nobody { display: grid; place-items: center; border: 2px dashed var(--line); border-radius: 50%; color: var(--dim);
