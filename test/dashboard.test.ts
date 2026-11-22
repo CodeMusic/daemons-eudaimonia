@@ -40,7 +40,7 @@ before(async () => {
   writeFileSync(join(dir, "cards.json"), JSON.stringify({ type_colours: { GROWTH: "#315231" },
     cards: { "1": { number: "001", name: "ONE", types: ["GROWTH"], category: "FIRST", art: { front: "gfx/daemons/one_front.png" } } } }));
   mkdirSync(join(dir, "art"));
-  writeFileSync(join(dir, "art", "player_reason.png"), PNG);
+  writeFileSync(join(dir, "art", "player_instinct.png"), PNG);
 
   const accounts = new Accounts(null, 1 << 10);
   await accounts.open();

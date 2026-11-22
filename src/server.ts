@@ -101,8 +101,9 @@ export function makeServer(o: Options): Server {
         return p ? file(res, p, "public, max-age=86400") : notFound(res);
       }
       if (/^\/[a-z0-9_-]+\.(js|css|svg|png)$/.test(path)) return file(res, join(o.web, path.slice(1)), "no-cache");
-      // the player as the game draws them (the trainer card's REASON), from the companion's art: ours, never Nintendo's
-      if (path === "/art/player.png") return o.art ? file(res, join(o.art, "player_reason.png"), "public, max-age=86400") : notFound(res);
+      // the player as the game draws them, from the companion's art: ours, never Nintendo's. INSTINCT, the striding one
+      // (E-8, the user 2026-11-22: "INSTINCT for E-8")
+      if (path === "/art/player.png") return o.art ? file(res, join(o.art, "player_instinct.png"), "public, max-age=86400") : notFound(res);
       const sealed = /^\/release\/(v[0-9]+\.[0-9]+\.x)\/notes\.pdf$/.exec(path);
       if (sealed) {
         const p = o.releases?.pdf(sealed[1]);
