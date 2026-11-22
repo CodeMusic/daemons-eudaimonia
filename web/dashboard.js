@@ -6,21 +6,13 @@
 // own page (E-6): where it works, its ARETE, its work and its history. The one thing it changes: a signed-in admin
 // ANSWERS a ticket that waits on the user from its modal -- a choice where the ticket gives them, their own words, and
 // it goes back to its lane (answers.ts). Every word DRAFT.
-import { $, api, el } from "./ui.js";
+import { $, ago, api, day, el, plural } from "./ui.js";
 import { md, inline } from "./md.js";
 import { whoami as me, pickDaemon, showSecret } from "./app.js";
 
 let board = null, releases = [], why = "";
 const REFRESH_MS = 60 * 1000;
 
-const ago = (iso) => {
-  if (!iso) return "";
-  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  return s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago`
-    : `${Math.round(s / 86400)} days ago`;
-};
-const day = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "");
-const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 
 /** A small keyboard, drawn: three rows of keys that light in turn while its lane is at work. */
 function keyboard() {
@@ -227,27 +219,107 @@ function answerForm(t) {
 }
 
 let shown = null;   // the ticket the modal shows
+/** A ticket's page (E-10): read from PRAXIS (/api/item) -- every field and note, its links and its history -- and, for a
+ *  mirrored one waiting on the user, Redmine's answer form beside it (/api/ticket). A ticket of a space of your own is
+ *  changed here: its state, lane, priority and order at once, its title and words by EDIT, a note at a time. */
 async function openTicket(id) {
   shown = id;
   $("ticket-title").textContent = id;
   $("ticket-body").replaceChildren(el("p", { class: "dim" }, "Reading it…"));
   show("ticket", `#ticket=${id}`);
-  try {
-    const { ticket: t } = await api("GET", `/api/ticket/${encodeURIComponent(id)}`);
-    $("ticket-title").textContent = `${t.id} · ${t.status.toUpperCase()}`;
-    $("ticket-body").replaceChildren(...[
-      el("h2", { class: "ticket-title" }, inline(t.title)),
-      el("p", { class: "dim small" }, [t.lane ? `lane ${t.lane}` : "no lane", `updated ${ago(t.updated)}`, t.closed && `closed ${day(t.closed)}`]
-        .filter(Boolean).join(" · ")),
-      el("div", { class: "md" }, md(t.description)),
-      t.fields.length ? el("dl", { class: "fields" }, t.fields.flatMap((f) => [el("dt", {}, f.name.toUpperCase()), el("dd", {}, md(f.value))])) : null,
-      t.waiting ? answerForm(t) : null,
-      t.notes.length ? el("h3", {}, "LATEST NOTES") : null,
-      ...t.notes.map((n) => el("article", { class: "note" }, el("small", { class: "dim" }, `${n.by} · ${ago(n.at)}`), el("div", { class: "md" }, md(n.text))))]
-      .filter(Boolean));
-  } catch (e) {
-    $("ticket-body").replaceChildren(el("p", { class: "error" }, e.message));
-  }
+  const mirroredId = /^[TCE]-[0-9]+$/.test(id);
+  const [ir, tr] = await Promise.allSettled([api("GET", `/api/item/${encodeURIComponent(id)}`),
+    mirroredId ? api("GET", `/api/ticket/${encodeURIComponent(id)}`) : Promise.reject(new Error(`No ticket ${id} here.`))]);
+  if (shown !== id) return;
+  const t = tr.status === "fulfilled" ? tr.value.ticket : null;
+  if (ir.status === "fulfilled") return drawItem(ir.value.item, ir.value.canEdit, t);
+  if (t) return drawTicket(t);
+  $("ticket-body").replaceChildren(el("p", { class: "error" }, (ir.reason ?? tr.reason).message));
+}
+
+/** Redmine's own view of a ticket, while this site's PRAXIS has not taken it yet */
+function drawTicket(t) {
+  $("ticket-title").textContent = `${t.id} · ${t.status.toUpperCase()}`;
+  $("ticket-body").replaceChildren(...[
+    el("h2", { class: "ticket-title" }, inline(t.title)),
+    el("p", { class: "dim small" }, [t.lane ? `lane ${t.lane}` : "no lane", `updated ${ago(t.updated)}`, t.closed && `closed ${day(t.closed)}`]
+      .filter(Boolean).join(" · ")),
+    el("div", { class: "md" }, md(t.description)),
+    t.fields.length ? el("dl", { class: "fields" }, t.fields.flatMap((f) => [el("dt", {}, f.name.toUpperCase()), el("dd", {}, md(f.value))])) : null,
+    t.waiting ? answerForm(t) : null,
+    t.notes.length ? el("h3", {}, "LATEST NOTES") : null,
+    ...t.notes.map((n) => el("article", { class: "note" }, el("small", { class: "dim" }, `${n.by} · ${ago(n.at)}`), el("div", { class: "md" }, md(n.text))))]
+    .filter(Boolean));
+}
+
+function drawItem(it, canEdit, t) {
+  const change = async (body, msg) => {
+    try {
+      const r = await api("POST", `/api/item/${encodeURIComponent(it.id)}`, body);
+      document.dispatchEvent(new CustomEvent("spaces-changed"));
+      if (shown === it.id) drawItem(r.item, r.canEdit, null);
+    } catch (e) { if (msg) msg.textContent = e.message; else alert(e.message); }
+  };
+  $("ticket-title").textContent = `${it.id} · ${it.status.toUpperCase()}`;
+  const meta = el("p", { class: "dim small" }, [it.spaceTitle, it.mirrored && "from Redmine", it.lane ? `lane ${it.lane}` : "no lane",
+    it.priority && it.priority !== "Normal" && it.priority.toLowerCase(), it.order != null && `order ${it.order}`,
+    `opened ${day(it.opened)} by ${it.by}`, `updated ${ago(it.updated)}`, it.closedAt && `closed ${day(it.closedAt)}`,
+    it.arete && `${it.arete} ARETE paid`].filter(Boolean).join(" · "));
+  const err = el("p", { class: "error", role: "alert" });
+
+  // the title and its words: read, or with EDIT, written
+  const title = el("h2", { class: "ticket-title" }, inline(it.title));
+  const words = el("div", { class: "md" }, it.description ? md(it.description) : el("p", { class: "dim" }, "No words yet."));
+  const edit = canEdit && el("button", { class: "link", onclick: () => {
+    const ti = el("input", { value: it.title, maxlength: 200, "aria-label": "Its title" });
+    const de = el("textarea", { rows: 8, "aria-label": "What it is" }, it.description);
+    const save = el("button", { class: "primary", onclick: async () => {
+      save.disabled = true;
+      if (ti.value.trim() !== it.title) await change({ action: "set", field: "title", value: ti.value }, err);
+      if (de.value !== it.description) await change({ action: "set", field: "description", value: de.value }, err);
+      if (ti.value.trim() === it.title && de.value === it.description) drawItem(it, canEdit, t);
+    } }, "SAVE");
+    title.replaceWith(el("div", { class: "edit-words" }, ti, de, el("div", { class: "actions" },
+      el("button", { onclick: () => drawItem(it, canEdit, t) }, "NOT NOW"), save)));
+    words.remove(); edit.remove();
+  } }, "EDIT");
+
+  // its state, lane, priority and order: each changed the moment it is picked
+  const controls = canEdit && el("div", { class: "controls" },
+    el("label", {}, "State ", el("select", { onchange: (e) => change({ action: "state", state: e.target.value }, err) },
+      it.states.map((s) => el("option", { value: s.name, selected: s.name === it.state }, s.title)))),
+    el("label", {}, "Lane ", el("input", { value: it.lane ?? "", list: "ticket-lanes", size: 10,
+      onchange: (e) => change({ action: "set", field: "lane", value: e.target.value }, err) })),
+    el("label", {}, "Priority ", el("select", { onchange: (e) => change({ action: "set", field: "priority", value: e.target.value }, err) },
+      ["Low", "Normal", "High", "Urgent"].map((p) => el("option", { value: p, selected: p === (it.priority ?? "Normal") }, p)))),
+    el("label", {}, "Order ", el("input", { type: "number", step: "any", value: it.order ?? "", size: 5,
+      onchange: (e) => change({ action: "set", field: "order", value: e.target.value }, err) })),
+    el("datalist", { id: "ticket-lanes" }, (board?.lanes ?? []).map((l) => el("option", { value: l.lane }))));
+
+  const fields = it.fields.filter((f) => f.value.trim() && f.value !== "(empty)");
+  const links = it.links.length && el("ul", { class: "links" }, it.links.map((l) => el("li", {},
+    el("span", { class: "dim" }, l.toward ? `${l.type} ` : `${l.type === "follows" ? "followed by" : l.type === "blocks" ? "blocked by"
+      : l.type === "made-from" ? "made into" : l.type} `),
+    el("button", { class: "link", onclick: () => openTicket(l.to) }, l.to))));
+  const noteForm = canEdit && (() => {
+    const f = el("form", { class: "note-form" }, el("textarea", { name: "text", rows: 3, "aria-label": "A note", placeholder: "A note: what moved, what you found" }),
+      el("div", { class: "actions" }, el("button", { class: "primary" }, "ADD THE NOTE")));
+    f.addEventListener("submit", (e) => { e.preventDefault(); f.querySelector("button").disabled = true; change({ action: "note", text: f.elements.text.value }, err); });
+    return f;
+  })();
+  const notes = [...it.notes].reverse();
+  $("ticket-body").replaceChildren(...[
+    title, meta, controls, edit, words, err,
+    fields.length ? el("dl", { class: "fields" }, fields.flatMap((f) => [el("dt", {}, f.name.toUpperCase()), el("dd", {}, md(f.value))])) : null,
+    t?.waiting ? answerForm(t) : null,
+    links && el("h3", {}, "LINKED"), links,
+    (notes.length || noteForm) && el("h3", {}, `NOTES${notes.length ? ` (${notes.length})` : ""}`), noteForm,
+    ...notes.map((n) => el("article", { class: "note" }, el("small", { class: "dim" }, `${n.by} · ${ago(n.at)}`), el("div", { class: "md" }, md(n.text)))),
+    it.history.length && el("details", { class: "changes" }, el("summary", {}, `ITS HISTORY (${it.history.length})`),
+      el("ol", {}, [...it.history].reverse().map((h) => el("li", {}, el("small", { class: "dim" }, `${day(h.at)} · ${h.by} `), h.what)))),
+    it.mirrored && el("p", { class: "dim small" }, "Mirrored from Redmine: it changes there until the cut-over (E-11).",
+      it.redmine ? [" ", el("a", { href: `http://roverbyteseer:3333/issues/${it.redmine}`, target: "_blank", rel: "noopener" }, "Open it in Redmine ↗")] : null)]
+    .filter(Boolean));
 }
 
 async function openRelease(name) {
@@ -300,3 +372,4 @@ addEventListener("hashchange", fromHash);
 setInterval(() => { if (document.visibilityState === "visible") load().catch(() => {}); }, REFRESH_MS);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && board && Date.now() - new Date(board.at) > REFRESH_MS) load(); });
 document.addEventListener("me", () => { draw(); if ($("ticket").open && shown) openTicket(shown); });   // signed in: the answer appears
+document.addEventListener("open-ticket", (e) => openTicket(e.detail));   // from THE SPACES (spaces.js)

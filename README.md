@@ -85,6 +85,20 @@ and editing), then **the cut-over** (E-11: `tools/tickets.py` talks to PRAXIS, a
 - Three of the oldest tickets (`T-183b`, `T-184a`, `T-185a`) have a letter in their number, which a handle cannot
   hold, so they are not mirrored; the cut-over has to decide what they become.
 
+### THE SPACES: the tickets here (E-10)
+
+THE SPACES, on the front page, lists every space PRAXIS holds. Each opens as a **LIST**, a **BOARD** (a column per
+state) or a **ROADMAP** (at work, next lane by lane in their order, waiting, lately done), in a modal with FULL VIEW for
+a new tab (`/#space=C&view=board`). A ticket opens as its own page: every field and note, its links and its history.
+
+- **The mirrored spaces** (DAEMONS `T-`, THE COMPANION `C-`, EUDAIMONIA `E-`) are read here by anyone and changed in
+  Redmine until the cut-over (E-11).
+- **A space of your own**, made here when signed in (a name and a prefix, `HOME-1`), takes its tickets here: a ticket
+  made with its kind, lane, priority and order; its state, lane, priority and order changed the moment they are picked;
+  its title and words by EDIT; a note at a time. Every change is an event written as the account that made it, a person
+  or an agent (by its key: `Authorization: Bearer ...`), and goes to the always-on replica within a second. That
+  replica refuses anything in a mirrored space. A space of your own is shown only to the signed in, unless made public.
+
 ## The DAEMONS playground
 
 **An all-in-one harness to demo and beta test [DAEMONS](https://github.com/CodeMusic/DAEMONS)**, the whole game and

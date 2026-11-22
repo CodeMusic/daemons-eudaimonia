@@ -30,7 +30,8 @@ import { Answers, answersEnv } from "./answers.ts";
 import { Releases } from "./releases.ts";
 import { makeServer } from "./server.ts";
 import { px, type Db } from "./praxis.ts";
-import { pull } from "./replica.ts";
+import { give, pull } from "./replica.ts";
+import { Spaces } from "./spaces.ts";
 import { eitherTickets, PraxisTickets } from "./tickets.ts";
 
 const ROOT = dirname(dirname(realpathSync(fileURLToPath(import.meta.url))));
@@ -104,11 +105,28 @@ const refresh = async () => {
 };
 const praxisTickets = new PraxisTickets(local, { pulled: () => (REPLICA === "off" ? null : pulledAt ?? 0), refresh });
 const tickets = eitherTickets(praxisTickets, redmine);
-void takeFromReplica();
-setInterval(() => void takeFromReplica(), 60_000);
+// E-10: the spaces of the site's own go to the always-on replica: a second after a change, and every minute after a pull
+let giveSaid = "", giving: ReturnType<typeof setTimeout> | null = null;
+const giveToReplica = async () => {
+  if (REPLICA === "off") return;
+  const own = spaces.list(true).filter((s) => !s.mirrored).map((s) => s.id);
+  try {
+    const r = await give(local, REPLICA, own);
+    if (r.sent) say(`PRAXIS: gave ${r.sent} events of the site's own spaces to ${REPLICA}`);
+    giveSaid = "";
+  } catch (e) {
+    const why = (e as Error).message;
+    if (why !== giveSaid) say(`PRAXIS: the site's own spaces can't reach ${REPLICA} (${why}); they wait here and go at the next minute`);
+    giveSaid = why;
+  }
+};
+const spaces = new Spaces(local, { changed: () => { if (giving) clearTimeout(giving); giving = setTimeout(() => void giveToReplica(), 1000); } });
+const exchange = async () => { await takeFromReplica(); await giveToReplica(); };
+void exchange();
+setInterval(() => void exchange(), 60_000);
 
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
-                           redmine: tickets, answers, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
+                           redmine: tickets, answers, spaces, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

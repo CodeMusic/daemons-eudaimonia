@@ -12,6 +12,7 @@
 //   GET  /px/have       what this replica has seen (PRAXIS's exchange)
 //   POST /px/missing    { have, limit? }: the events the asker lacks
 //   POST /px/mirror     run the mirror now (after an answer, so the dashboard sees it at once), and say what it did
+//   POST /px/receive    { events }: a site's changes to its own spaces (E-10) -- never to a mirrored one
 import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
@@ -20,7 +21,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { px, type Db } from "./praxis.ts";
 import { MIRROR, Mirror, redmineGet, type Ran } from "./mirror.ts";
-import { haveOf, missingFor } from "./replica.ts";
+import { haveOf, missingFor, receiveFrom } from "./replica.ts";
 import { allowed } from "./reach.ts";
 import { redmineEnv } from "./redmine.ts";
 
@@ -85,6 +86,11 @@ const server = createServer(async (req, res) => {
     if (path === "/px/have" && method === "GET") return json(res, 200, haveOf(praxis));
     if (path === "/px/missing" && method === "POST") return json(res, 200, missingFor(praxis, body));
     if (path === "/px/mirror" && method === "POST") return json(res, 200, await runOnce());
+    if (path === "/px/receive" && method === "POST") {
+      const r = receiveFrom(praxis, body, new Set([...mirror.spaces().values()].map((s) => s.id)));
+      if (r.applied) say(`took ${r.applied} events from ${req.socket.remoteAddress}${r.rejected ? `, refused ${r.rejected}` : ""}`);
+      return json(res, 200, r);
+    }
     if (path === "/px/status" && method === "GET")
       return json(res, 200, { replica: praxis.replica, last, spaces: mirror.spaces().size,
                               tickets: Object.fromEntries([...mirror.spaces()].map(([k, s]) => [k, praxis.items(s.id).length])) });

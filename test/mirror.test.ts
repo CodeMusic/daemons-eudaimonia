@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { px, type Db } from "../src/praxis.ts";
 import { Mirror, MIRROR, type Get, type Issue } from "../src/mirror.ts";
-import { haveOf, missingFor, pull, remote } from "../src/replica.ts";
+import { haveOf, missingFor, pull } from "../src/replica.ts";
 import { eitherTickets, PraxisTickets } from "../src/tickets.ts";
 import { POINTS } from "../src/work.ts";
 
@@ -156,7 +156,7 @@ test("the dashboard reads PRAXIS as it read Redmine", async () => {
   assert.equal((await t.lane("nobody")), null);
 });
 
-test("another replica pulls what it lacks and reads the same board; it never gives back", async () => {
+test("another replica pulls what it lacks and reads the same board", async () => {
   const a = fresh(), b = new px.Praxis(new DatabaseSync(":memory:") as unknown as Db, { actor: "eudaimonia" });
   await new Mirror(a, redmine(world()).get).run();
   const asked: string[] = [];
@@ -173,7 +173,6 @@ test("another replica pulls what it lacks and reads the same board; it never giv
   assert.ok(asked.every((x) => x === "POST /px/missing"), "it asks only for what it lacks");
   assert.deepEqual((await via.board()).projects, (await new PraxisTickets(a).board()).projects);
   assert.equal((await pull(b, "http://roverbyteseer:4742", { fetch: f })).sent, 0, "a second pull takes nothing");
-  assert.throws(() => remote("http://roverbyteseer:4742", { fetch: f }).receive([]), /never gives/);
   // after an answer, forgetting waits for the pull it asks for
   let refreshed = false;
   const waits = new PraxisTickets(b, { refresh: async () => { await new Promise((r) => setTimeout(r, 5)); refreshed = true; } });

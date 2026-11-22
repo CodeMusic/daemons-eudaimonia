@@ -24,6 +24,14 @@
 //   POST /api/ticket/<id>/answer {text, choice?, keep?}   (an admin) answer a ticket that waits on the user (answers.ts)
 //   GET  /release/<group>/notes.pdf  a sealed group's notes          GET /art/player.png       the player, the monkey
 //
+// THE SPACES (E-10): every space PRAXIS holds, its tickets and each ticket's page -- the mirrored ones (Redmine's, until
+// the cut-over) for anyone, a space of the site's own when signed in or public; changes only to the site's own:
+//   GET  /api/spaces                 every space: its counts, kinds and states        GET /api/space/<PREFIX>   its tickets
+//   GET  /api/item/<HANDLE>          one ticket: every field and note, its links and history, whether it can be changed
+//   POST /api/spaces {title, prefix, reach?}                   (signed in) a space of the site's own
+//   POST /api/space/<PREFIX>/items {kind?, title, description?, lane?, priority?, order?, ...}   (signed in) a ticket
+//   POST /api/item/<HANDLE> {action: set | state | note, field?, value?, state?, text?}   (signed in) a change
+//
 // An agent calls the API with `Authorization: Bearer <its key>`; a person's browser with the session cookie. A POST
 // from a browser must come from a page of this site (its Origin is this Host), as JSON -- another site's page cannot
 // sign anyone in, out or anywhere else.
@@ -35,6 +43,7 @@ import type { Avatars } from "./avatars.ts";
 import { type Egg, isEdition } from "./egg.ts";
 import { TICKET_ID, waitsOnUser } from "./redmine.ts";
 import type { Tickets } from "./tickets.ts";
+import { actorOf, type Spaces } from "./spaces.ts";
 import { type Answers, ticketChoices } from "./answers.ts";
 import type { Releases } from "./releases.ts";
 import { allowed, home, ourHost } from "./reach.ts";
@@ -54,7 +63,9 @@ export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?:
                          *  Redmine until then -- the releases, the companion's art folder */
                         redmine?: Tickets | null; releases?: Releases; art?: string;
                         /** E-1's second slice: the one write, answering a ticket that waits on the user (null: no key) */
-                        answers?: Answers | null };
+                        answers?: Answers | null;
+                        /** E-10: every space PRAXIS holds, and changes to the site's own (null: no PRAXIS here) */
+                        spaces?: Spaces | null };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -183,6 +194,25 @@ export function makeServer(o: Options): Server {
       return json(res, { lane: { ...l, account: agents.has(l.lane), daemon,
                                  daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null } });
     }
+    // ---- THE SPACES (E-10): read by anyone, a space of the site's own only when signed in or public -----------------
+    const signedIn = !!who && !who.limited;
+    if (path === "/api/spaces" && method === "GET") {
+      if (!o.spaces) return json(res, { spaces: [], canMake: false, why: "This site keeps no PRAXIS." });
+      return json(res, { spaces: o.spaces.list(signedIn), canMake: signedIn });
+    }
+    const spaceAt = /^\/api\/space\/([A-Z][A-Z0-9]{0,9})$/.exec(path);
+    if (spaceAt && method === "GET") {
+      if (!o.spaces) throw new Refused("This site keeps no PRAXIS.", 503);
+      const s = o.spaces.space(spaceAt[1], signedIn);
+      return json(res, { space: o.spaces.view(s), rows: o.spaces.rows(s), canEdit: signedIn && !o.spaces.mirrored(s) });
+    }
+    const itemAt = /^\/api\/item\/([A-Z][A-Z0-9]{0,9}-[0-9]{1,6})$/.exec(path);
+    if (itemAt && method === "GET") {
+      if (!o.spaces) throw new Refused("This site keeps no PRAXIS.", 503);
+      const it = o.spaces.item(itemAt[1], signedIn);
+      return json(res, { item: it, canEdit: signedIn && !it.mirrored });
+    }
+
     if (path === "/api/releases" && method === "GET") return json(res, { releases: o.releases?.list() ?? [] });
     const release = /^\/api\/release\/(v[0-9]+\.[0-9]+\.(?:[0-9]+|x))$/.exec(path);
     if (release && method === "GET") {
@@ -232,6 +262,23 @@ export function makeServer(o: Options): Server {
     if (who.limited) throw new Refused("Change the password first.", 403);
 
     if (path === "/api/avatar" && method === "POST") return json(res, { account: o.accounts.setAvatar(me, avatar(body.avatar)) });
+
+    // ---- THE SPACES' changes (E-10): each one written as this account, a person or an agent ---------------------------
+    if (o.spaces && method === "POST") {
+      if (path === "/api/spaces") {
+        const s = o.spaces.makeSpace(actorOf(me), body);
+        log(`${addr} ${me.name} made the space ${s.title} (${s.prefix}-)`);
+        return json(res, { space: s }, 201);
+      }
+      const items = /^\/api\/space\/([A-Z][A-Z0-9]{0,9})\/items$/.exec(path);
+      if (items) {
+        const handle = o.spaces.make(actorOf(me), items[1], body);
+        log(`${addr} ${me.name} made ${handle}`);
+        return json(res, { item: o.spaces.item(handle, true), canEdit: true }, 201);
+      }
+      const change = /^\/api\/item\/([A-Z][A-Z0-9]{0,9}-[0-9]{1,6})$/.exec(path);
+      if (change) return json(res, { item: o.spaces.change(actorOf(me), change[1], body), canEdit: true });
+    }
 
     if (path === "/api/accounts" && method === "GET") {
       if (!me.admin) throw new Refused("Only an admin can do that.", 403);
