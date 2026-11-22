@@ -121,6 +121,7 @@ PLIST
           plutil -lint "$REPLICA_AGENT" >/dev/null
           launchctl bootout "gui/$(id -u)" "$REPLICA_AGENT" 2>/dev/null || true
           launchctl bootstrap "gui/$(id -u)" "$REPLICA_AGENT"
+          launchctl kickstart "gui/$(id -u)/ca.codemusic.praxis-replica" 2>/dev/null || true   # bootstrapped over ssh, it waits else
           echo "bindEudaimonia: PRAXIS's replica now runs whenever you are logged in. Log: data/praxis.log   Undo: ./bindEudaimonia.sh replica never"
           exit 0
         fi
