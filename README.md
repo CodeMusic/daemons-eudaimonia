@@ -64,6 +64,9 @@ player**, framed over the page: its saves, its companion and what's new, as at p
 | **YOUR OWN CART** | your FireRed or LeafGreen file (1.0 or Rev 1, as dumped from the cart), patched in your browser by the latest release's BPS patch, and checked | only the patch, which every release publishes anyway |
 | **THE RELEASE'S OWN** | the release's ROM, with the password and a tick that these are backups of carts you own | the ROM, from this machine, to its own networks |
 
+**Or downloaded** (E-14): SETTINGS chooses how a made cart is played -- in this page, or saved as a `.gba` file
+(`DAEMONS CONTENT v11.413.1.gba`) for the player's own emulator, its saves kept there. Either way it is made the same.
+
 The password is kept only as a hash, folded to small letters so it is taken in any case; a browser that gives it holds
 a pass (a cookie) for thirty days. Its value comes from `$EUDAIMONIA_EGG` or the DAEMONS author's private notes, read
 at every start until the admin sets one, and never from a repository; **the admin changes it in ACCOUNTS**, and a new

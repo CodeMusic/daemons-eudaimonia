@@ -7,10 +7,13 @@
 // again. A cart plays in the playground's mGBA player, framed over this page, made one of two ways:
 //   YOUR OWN CART  -- your FireRed or LeafGreen file, patched here by the release's BPS patch: nothing of it is sent.
 //   THE RELEASE'S  -- the release's own ROM, with the password and a tick that these are backups of carts you own.
-// Either way the ROM reaches the player by postMessage, to the playground's page on this same host (site/index.html),
+// E-14 (the user, 2026-11-22, by multiple choice): SETTINGS chooses how a made cart is played -- in this page (below), or
+// DOWNLOADED as a .gba file for the player's own emulator; the same two ways make it, and nothing else changes.
+// Played here, the ROM reaches the player by postMessage, to the playground's page on this same host (site/index.html),
 // framed here rather than in a new tab: a webview or a pop-up blocker opens a new tab in this one's place, or not at all.
 import { $, api, el } from "./ui.js";
 import { applyBps, crc32Hex } from "./bps.js";
+import { setting } from "./settings.js";
 
 const CARTS = "eudaimonia-carts", YEAR = 400 * 24 * 60 * 60;   // a browser keeps a cookie 400 days at most
 const ROM_MOST = 32 * 1024 * 1024;
@@ -88,7 +91,7 @@ async function openEgg() {
 function door() {
   view("door", "SOMETHING STIRS IN HERE");
   const f = $("egg-door-form");
-  f.reset(); f.querySelector(".error").textContent = "";
+  f.reset(); f.querySelector(".error").textContent = ""; $("egg-release-status").textContent = "";
 }
 $("egg-door-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
@@ -165,6 +168,35 @@ function play(edition) {
   $("egg-release-line").textContent = `${state.release}'s own ${playing.name}, sent from this machine.`;
   $("egg-release-pw").hidden = state.pass;
   f.password.required = !state.pass;
+  howShown();
+}
+
+/** E-14: PLAY or DOWNLOAD, as SETTINGS says, and a line saying which, that opens SETTINGS */
+const downloading = () => setting("eggPlay") === "download";
+function howShown() {
+  const word = downloading() ? "DOWNLOAD" : "PLAY";
+  $("egg-own-play").textContent = word;
+  $("egg-release-form").querySelector("button.primary").textContent = word;
+  $("egg-where").textContent = downloading() ? "It is saved as a .gba file, for your own emulator: its saves are kept there."
+    : "It plays here, in the playground's player: its saves, its companion, what's new.";
+  $("egg-how").replaceChildren(downloading() ? "Made carts are downloaded, to play in your own emulator. "
+    : "Made carts play here, in this page. ", el("button", { class: "link", type: "button",
+      onclick: () => document.dispatchEvent(new CustomEvent("open-settings", { detail: "egg" })) }, "Change it in SETTINGS"));
+}
+document.addEventListener("settings-changed", (e) => { if (e.detail === "eggPlay" && playing) howShown(); });
+
+/** E-14: the made cart saved as a file -- named for its edition and release -- for the player's own emulator */
+function download(c, bytes, how, err) {
+  const say = (t) => ($(how === "own" ? "egg-own-status" : "egg-release-status").textContent = t);
+  say(how === "own" ? "Saving it…" : `Fetching ${c.name}…`);
+  bytes.then((b) => {
+    const name = `DAEMONS ${c.name} ${state.release}.gba`;
+    const url = URL.createObjectURL(new Blob([b], { type: "application/octet-stream" }));
+    const a = el("a", { href: url, download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    say(`Saved as "${name}": open it in your own emulator (mGBA, or any GBA emulator). Its saves are your emulator's, not this page's.`);
+  }, (e) => { say(""); err(e.message); });
 }
 $("egg-back").addEventListener("click", () => shelf(remembered()));
 
@@ -233,6 +265,7 @@ const playerOrigin = () => `${location.protocol}//${location.hostname.includes("
 
 /** Frames the playground's page and hands it the ROM once it says it is ready -- to its origin alone. */
 function playIn(c, bytes, how, err) {
+  if (downloading()) return download(c, bytes, how, err);
   const origin = playerOrigin();
   const frame = el("iframe", { title: "The playground's player", src: `${origin}/#from=${encodeURIComponent(location.origin)}`,
     allow: "fullscreen; gamepad; autoplay",
