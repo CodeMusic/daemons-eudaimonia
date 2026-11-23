@@ -60,7 +60,8 @@ import { allowed, home, ourHost } from "./reach.ts";
 export const COOKIE = "eudaimonia", EGG_COOKIE = "eudaimonia-egg";
 const BODY_MOST = 16 * 1024, FAILS_MOST = 8, FAILS_WINDOW_MS = 15 * 60 * 1000;
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-                                        ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml" };
+                                        ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml",
+                                        ".json": "application/json; charset=utf-8" };
 const HEADERS = {
   "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
@@ -124,7 +125,7 @@ export function makeServer(o: Options): Server {
         const p = o.avatars.sprite(Number(m[1]));
         return p ? file(res, p, "public, max-age=86400") : notFound(res);
       }
-      if (/^\/[a-z0-9_-]+\.(js|css|svg|png)$/.test(path)) return file(res, join(o.web, path.slice(1)), "no-cache");
+      if (/^\/[a-z0-9_-]+\.(js|css|svg|png|json)$/.test(path)) return file(res, join(o.web, path.slice(1)), "no-cache");
       // the player as the game draws them, from the companion's art: ours, never Nintendo's. INSTINCT, the striding one
       // (E-8, the user 2026-11-22: "INSTINCT for E-8")
       if (path === "/art/player.png") return o.art ? file(res, join(o.art, "player_instinct.png"), "public, max-age=86400") : notFound(res);

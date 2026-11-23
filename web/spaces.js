@@ -4,6 +4,7 @@
 // it. Opening a ticket is the dashboard's: this asks for it with the event "open-ticket". Every word DRAFT.
 import { $, ago, api, bar, day, el } from "./ui.js";
 import { inline } from "./md.js";
+import { townOf, townChosen, townsReady, wear } from "./settings.js";
 
 const VIEWS = ["list", "board", "roadmap"];
 const LIST_MOST = 150, DONE_MOST = 12, NEXT_MOST = 5;
@@ -50,6 +51,7 @@ function showSpace(hash) {
 $("space").addEventListener("close", () => {
   if (location.hash.startsWith("#space")) history.replaceState(null, "", location.pathname);
   $("space").classList.remove("full");
+  wear($("space"), null);
   current = null;
 });
 
@@ -77,6 +79,12 @@ function drawSpace() {
   $("space-line").textContent = [s.mirrored ? "Mirrored from Redmine: read here, changed there until the cut-over"
     : `${s.reach === "public" ? "Public: anyone who reaches the site reads it" : "Private: only the signed in read it"}, made by ${s.by} ${day(s.made)}`, `${s.open} open`, `${s.closed} closed`].join(" · ");
   $("space-full").href = `/#space=${s.prefix}&view=${current.view}`;
+  // E-13: the space wears its town's palette -- picked by itself, or chosen in SETTINGS
+  const town = townOf(s);
+  wear($("space"), town);
+  if (town) $("space-line").append(" · ", el("button", { class: "link town-line", title: "Choose another in SETTINGS",
+    onclick: () => document.dispatchEvent(new CustomEvent("open-settings", { detail: "towns" })) },
+    `in ${town.key}'s colours${townChosen(s.prefix) ? "" : ", by itself"}`));
   $("space-tabs").replaceChildren(...VIEWS.map((v) => el("button", { role: "tab", "aria-selected": String(v === current.view),
     class: v === current.view ? "tab on" : "tab", onclick: () => { current.view = v; if ($("space").classList.contains("full"))
       history.replaceState(null, "", `#space=${s.prefix}&view=${v}`); drawSpace(); } }, v.toUpperCase())));
@@ -255,8 +263,9 @@ function fromHash() {
 }
 
 document.addEventListener("spaces-changed", refresh);
+document.addEventListener("settings-changed", (e) => { if (e.detail === "towns" && current?.data) drawSpace(); });
 document.addEventListener("me", () => { load(); if (current?.prefix && $("space").open) openSpace(current.prefix, current.view); });
-await load();
+await Promise.all([load(), townsReady]);
 fromHash();
 addEventListener("hashchange", fromHash);
 setInterval(() => { if (document.visibilityState === "visible") load().catch(() => {}); }, 60 * 1000);

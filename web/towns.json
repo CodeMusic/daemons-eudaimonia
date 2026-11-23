@@ -1,0 +1,500 @@
+{
+ "_": "E-13: each town's palette, read from its own tileset in DAEMONS' engine by tools/towns.py -- never edited by hand. bg, panel, raised and line are the page's darks in the ground's hue; accent carries dark text; colours are the town's most-covering, with their share of it.",
+ "towns": [
+  {
+   "key": "BLANCHE",
+   "name": "BLANCHE TOWN",
+   "bg": "#141613",
+   "panel": "#1f211e",
+   "raised": "#2a2d28",
+   "line": "#434740",
+   "accent": "#6ba6f8",
+   "second": "#bde6a4",
+   "ground": "#c4d4ba",
+   "colours": [
+    {
+     "colour": "#c4d4ba",
+     "share": 0.372
+    },
+    {
+     "colour": "#eeeee6",
+     "share": 0.139
+    },
+    {
+     "colour": "#d6e6ea",
+     "share": 0.081
+    },
+    {
+     "colour": "#c4d6c4",
+     "share": 0.024
+    },
+    {
+     "colour": "#5a5a73",
+     "share": 0.023
+    },
+    {
+     "colour": "#f6f6ff",
+     "share": 0.021
+    },
+    {
+     "colour": "#dadad0",
+     "share": 0.02
+    },
+    {
+     "colour": "#a0b6a4",
+     "share": 0.018
+    }
+   ]
+  },
+  {
+   "key": "CALLOW",
+   "name": "CALLOW CITY",
+   "bg": "#16110b",
+   "panel": "#211910",
+   "raised": "#2d2216",
+   "line": "#473723",
+   "accent": "#e78817",
+   "second": "#6080aa",
+   "ground": "#b46200",
+   "colours": [
+    {
+     "colour": "#b46200",
+     "share": 0.112
+    },
+    {
+     "colour": "#6080aa",
+     "share": 0.089
+    },
+    {
+     "colour": "#d5cdcd",
+     "share": 0.077
+    },
+    {
+     "colour": "#7b7b83",
+     "share": 0.077
+    },
+    {
+     "colour": "#d5e6c5",
+     "share": 0.065
+    },
+    {
+     "colour": "#834100",
+     "share": 0.063
+    },
+    {
+     "colour": "#414a6a",
+     "share": 0.05
+    },
+    {
+     "colour": "#947b41",
+     "share": 0.043
+    }
+   ]
+  },
+  {
+   "key": "SLATE",
+   "name": "SLATE CITY",
+   "bg": "#101216",
+   "panel": "#191c21",
+   "raised": "#21262d",
+   "line": "#353c47",
+   "accent": "#c7976f",
+   "second": "#cc282c",
+   "ground": "#2e3642",
+   "colours": [
+    {
+     "colour": "#2e3642",
+     "share": 0.123
+    },
+    {
+     "colour": "#ecece2",
+     "share": 0.12
+    },
+    {
+     "colour": "#1e202a",
+     "share": 0.105
+    },
+    {
+     "colour": "#3e4856",
+     "share": 0.096
+    },
+    {
+     "colour": "#5a5a73",
+     "share": 0.067
+    },
+    {
+     "colour": "#8a603c",
+     "share": 0.062
+    },
+    {
+     "colour": "#b0a890",
+     "share": 0.055
+    },
+    {
+     "colour": "#b4c5d5",
+     "share": 0.04
+    }
+   ]
+  },
+  {
+   "key": "DOLDRUM",
+   "name": "DOLDRUM CITY",
+   "bg": "#111416",
+   "panel": "#191f21",
+   "raised": "#222a2d",
+   "line": "#374347",
+   "accent": "#afe1f2",
+   "second": "#6ab46a",
+   "ground": "#afe1f2",
+   "colours": [
+    {
+     "colour": "#afe1f2",
+     "share": 0.145
+    },
+    {
+     "colour": "#a4a4b4",
+     "share": 0.066
+    },
+    {
+     "colour": "#6ab46a",
+     "share": 0.065
+    },
+    {
+     "colour": "#8bd583",
+     "share": 0.058
+    },
+    {
+     "colour": "#6c9db6",
+     "share": 0.049
+    },
+    {
+     "colour": "#4b7d94",
+     "share": 0.042
+    },
+    {
+     "colour": "#7b7b8b",
+     "share": 0.039
+    },
+    {
+     "colour": "#615f63",
+     "share": 0.033
+    }
+   ]
+  },
+  {
+   "key": "ARDOR",
+   "name": "ARDOR CITY",
+   "bg": "#16120b",
+   "panel": "#211c10",
+   "raised": "#2d2616",
+   "line": "#473d23",
+   "accent": "#ffbd20",
+   "second": "#62bd94",
+   "ground": "#ffbd20",
+   "colours": [
+    {
+     "colour": "#ffbd20",
+     "share": 0.162
+    },
+    {
+     "colour": "#7b7b83",
+     "share": 0.116
+    },
+    {
+     "colour": "#62bd94",
+     "share": 0.081
+    },
+    {
+     "colour": "#414a6a",
+     "share": 0.064
+    },
+    {
+     "colour": "#de9c00",
+     "share": 0.049
+    },
+    {
+     "colour": "#decd83",
+     "share": 0.047
+    },
+    {
+     "colour": "#bd6a39",
+     "share": 0.039
+    },
+    {
+     "colour": "#393129",
+     "share": 0.036
+    }
+   ]
+  },
+  {
+   "key": "HALFTONE",
+   "name": "HALFTONE TOWN",
+   "bg": "#151516",
+   "panel": "#212021",
+   "raised": "#2c2c2d",
+   "line": "#464647",
+   "accent": "#eee69c",
+   "second": "#d59494",
+   "ground": "#eeecf2",
+   "colours": [
+    {
+     "colour": "#eeecf2",
+     "share": 0.112
+    },
+    {
+     "colour": "#eee69c",
+     "share": 0.106
+    },
+    {
+     "colour": "#d59494",
+     "share": 0.074
+    },
+    {
+     "colour": "#282434",
+     "share": 0.074
+    },
+    {
+     "colour": "#948331",
+     "share": 0.059
+    },
+    {
+     "colour": "#7b7b83",
+     "share": 0.057
+    },
+    {
+     "colour": "#ccc8d6",
+     "share": 0.045
+    },
+    {
+     "colour": "#dec5ff",
+     "share": 0.042
+    }
+   ]
+  },
+  {
+   "key": "VERDIGRIS",
+   "name": "VERDIGRIS CITY",
+   "bg": "#161510",
+   "panel": "#212019",
+   "raised": "#2d2b21",
+   "line": "#474535",
+   "accent": "#72a4c7",
+   "second": "#ded59c",
+   "ground": "#ded59c",
+   "colours": [
+    {
+     "colour": "#ded59c",
+     "share": 0.084
+    },
+    {
+     "colour": "#467494",
+     "share": 0.076
+    },
+    {
+     "colour": "#d6d0c4",
+     "share": 0.071
+    },
+    {
+     "colour": "#7b7b83",
+     "share": 0.068
+    },
+    {
+     "colour": "#8cd6bd",
+     "share": 0.051
+    },
+    {
+     "colour": "#c5d5de",
+     "share": 0.044
+    },
+    {
+     "colour": "#b26238",
+     "share": 0.038
+    },
+    {
+     "colour": "#7c4028",
+     "share": 0.035
+    }
+   ]
+  },
+  {
+   "key": "LURID",
+   "name": "LURID CITY",
+   "bg": "#14160b",
+   "panel": "#1f2110",
+   "raised": "#2a2d16",
+   "line": "#434723",
+   "accent": "#bdf729",
+   "second": "#39ac9c",
+   "ground": "#e7ff4a",
+   "colours": [
+    {
+     "colour": "#e7ff4a",
+     "share": 0.087
+    },
+    {
+     "colour": "#e6d58b",
+     "share": 0.085
+    },
+    {
+     "colour": "#bdf729",
+     "share": 0.079
+    },
+    {
+     "colour": "#6bce18",
+     "share": 0.072
+    },
+    {
+     "colour": "#295a4a",
+     "share": 0.063
+    },
+    {
+     "colour": "#39ac9c",
+     "share": 0.059
+    },
+    {
+     "colour": "#7b7b83",
+     "share": 0.045
+    },
+    {
+     "colour": "#414a6a",
+     "share": 0.044
+    }
+   ]
+  },
+  {
+   "key": "BRAZEN",
+   "name": "BRAZEN CITY",
+   "bg": "#161611",
+   "panel": "#21211b",
+   "raised": "#2d2d24",
+   "line": "#474739",
+   "accent": "#d5d5a4",
+   "second": "#8bbd94",
+   "ground": "#d5d5a4",
+   "colours": [
+    {
+     "colour": "#d5d5a4",
+     "share": 0.277
+    },
+    {
+     "colour": "#bdbd8b",
+     "share": 0.085
+    },
+    {
+     "colour": "#ecce7c",
+     "share": 0.082
+    },
+    {
+     "colour": "#f6ee4a",
+     "share": 0.06
+    },
+    {
+     "colour": "#7b7b83",
+     "share": 0.042
+    },
+    {
+     "colour": "#a2762e",
+     "share": 0.04
+    },
+    {
+     "colour": "#414a6a",
+     "share": 0.039
+    },
+    {
+     "colour": "#d5cd20",
+     "share": 0.028
+    }
+   ]
+  },
+  {
+   "key": "QUICKSILVER",
+   "name": "QUICKSILVER IS.",
+   "bg": "#161514",
+   "panel": "#21201f",
+   "raised": "#2d2b29",
+   "line": "#474542",
+   "accent": "#d29174",
+   "second": "#acac83",
+   "ground": "#a8a29a",
+   "colours": [
+    {
+     "colour": "#a8a29a",
+     "share": 0.063
+    },
+    {
+     "colour": "#585a70",
+     "share": 0.058
+    },
+    {
+     "colour": "#1e1a22",
+     "share": 0.055
+    },
+    {
+     "colour": "#414a6a",
+     "share": 0.05
+    },
+    {
+     "colour": "#585254",
+     "share": 0.05
+    },
+    {
+     "colour": "#807a76",
+     "share": 0.048
+    },
+    {
+     "colour": "#d5def6",
+     "share": 0.046
+    },
+    {
+     "colour": "#8b5239",
+     "share": 0.043
+    }
+   ]
+  },
+  {
+   "key": "UMBRA",
+   "name": "UMBRA PLATEAU",
+   "bg": "#151516",
+   "panel": "#1f1f21",
+   "raised": "#2a2a2d",
+   "line": "#444447",
+   "accent": "#e6d58b",
+   "second": "#62836a",
+   "ground": "#7b7b83",
+   "colours": [
+    {
+     "colour": "#7b7b83",
+     "share": 0.111
+    },
+    {
+     "colour": "#94948b",
+     "share": 0.104
+    },
+    {
+     "colour": "#b4b4a4",
+     "share": 0.097
+    },
+    {
+     "colour": "#2e2c36",
+     "share": 0.086
+    },
+    {
+     "colour": "#52526a",
+     "share": 0.074
+    },
+    {
+     "colour": "#d5d5de",
+     "share": 0.054
+    },
+    {
+     "colour": "#403e4a",
+     "share": 0.049
+    },
+    {
+     "colour": "#ffffff",
+     "share": 0.041
+    }
+   ]
+  }
+ ]
+}

@@ -13,6 +13,7 @@
 <script type="module" src="/dashboard.js"></script>
 <script type="module" src="/spaces.js"></script>
 <script type="module" src="/changes.js"></script>
+<script type="module" src="/settings.js"></script>
 </head>
 <body>
 <header class="top">
@@ -21,6 +22,7 @@
     <p class="sub">PRAXIS and ARETE, held together</p>
   </div>
   <div id="who">
+    <button id="settings-open" class="icon" aria-label="SETTINGS" title="SETTINGS">⚙</button>
     <button id="signin-open" class="primary" hidden>SIGN IN</button>
     <div id="me" hidden>
       <button id="me-open" class="me" aria-haspopup="menu"><img id="me-avatar" alt=""><span id="me-name"></span></button>
@@ -149,6 +151,7 @@
 
   <section id="egg-play" hidden>
     <div class="play-head"><span id="egg-play-cart"></span><p id="egg-play-line"></p></div>
+    <p class="dim small" id="egg-how"></p>
     <div class="ways" id="egg-ways">
       <article class="way">
         <h3>YOUR OWN CART</h3>
@@ -164,11 +167,12 @@
           <label class="check"><input type="checkbox" name="agreed" required> These are backups of carts I own.</label>
           <label id="egg-release-pw">The password <input name="password" type="password" autocomplete="off"></label>
           <p class="error" role="alert"></p>
+          <p class="status" id="egg-release-status" role="status"></p>
           <div class="actions"><button class="primary">PLAY</button></div>
         </form>
       </article>
     </div>
-    <p class="dim small">It plays here, in the playground's player: its saves, its companion, what's new.
+    <p class="dim small"><span id="egg-where">It plays here, in the playground's player: its saves, its companion, what's new.</span>
       <button class="link" id="egg-back">Back to your carts</button></p>
   </section>
 </dialog>
@@ -198,6 +202,22 @@
   <p class="dim small" id="space-line"></p>
   <div class="space-bar"><div class="tabs" role="tablist" id="space-tabs"></div><div class="toolbar" id="space-tools"></div></div>
   <div id="space-body"></div>
+</dialog>
+
+<dialog id="settings" class="wide" aria-labelledby="settings-title">
+  <div class="dialog-head"><h2 id="settings-title">SETTINGS</h2><button data-close aria-label="Close">✕</button></div>
+  <p class="dim small">Kept in this browser, for this browser only.</p>
+  <section>
+    <h3>TOWN COLOURS</h3>
+    <p class="dim">A space opened in full wears one of the game's towns, its colours read from the town itself. Each
+      space picks its own town; choose another here.</p>
+    <div id="settings-towns"></div>
+  </section>
+  <section>
+    <h3>THE EASTER EGG</h3>
+    <p class="dim">How a cart made through its door is played.</p>
+    <div class="choices" id="settings-egg"></div>
+  </section>
 </dialog>
 
 <dialog id="release" class="wide" aria-labelledby="release-title">

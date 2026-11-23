@@ -45,6 +45,13 @@ sessions and keys as SHA-256 hashes of random bytes, so nothing there can be rea
 from a page of this site, as JSON; a sign-in is refused for a quarter of an hour after eight wrong passwords from one
 address.
 
+- **SETTINGS** (the ⚙ beside SIGN IN, for anyone) keeps what a browser chooses for itself, in that browser. **TOWN
+  COLOURS** (E-13): a space opened in full wears one of the game's eleven towns, its colours read from the town's own
+  tileset in DAEMONS' engine by `tools/towns.py` (into `web/towns.json`; `--write` to write it again after the towns are
+  redrawn). Each space picks its town by itself -- the game's tickets BLANCHE, the companion's CALLOW, EUDAIMONIA's LURID,
+  any other by the words of its title (a JOURNAL is SLATE's, RECIPES QUICKSILVER's), else by its prefix -- or SETTINGS
+  chooses another (`web/settings.js`).
+
 ### THE EASTER EGG: your cart becomes a DAEMONS cart
 
 A dim egg on the front page asks a riddle; its answer, in any case, is the password. Then: **which cart do you own?** FIRERED, LEAFGREEN or both,
