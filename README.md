@@ -23,6 +23,10 @@ the DAEMONS playground until 2026-11-20, and it still serves that beside the sit
   a note in the project's way of quoting the user, and the ticket back to Ready for its lane. That is the site's only
   write to Redmine. It uses the user's own key, `REDMINE_KEY_USER` in `~/.redmine.env`, once it is added there, and
   the sessions' key until then (`src/redmine.ts`, `src/answers.ts`, `src/releases.ts`, `web/dashboard.js`).
+  **THE CHANGES** shows what was pushed lately in the five public repositories (read from the clones beside this one,
+  each branch's upstream, never a working tree) and the pull requests open on GitHub (its public API, a quarter of an
+  hour at a time), each pull request with the lane whose ticket it names as the daemon to review it. The reviews
+  themselves begin once the agents work in their sandbox (E-15) (`src/changes.ts`, `web/changes.js`).
 
 - **The first sign-in is `admin` / `admin`, and it is changed at once.** Until it is, that password is taken only from
   this machine, a home network or the tailnet, with no proxy between, and the session it opens can do nothing but

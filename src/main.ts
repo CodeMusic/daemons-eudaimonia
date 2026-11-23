@@ -32,6 +32,7 @@ import { makeServer } from "./server.ts";
 import { px, type Db } from "./praxis.ts";
 import { give, pull } from "./replica.ts";
 import { Spaces } from "./spaces.ts";
+import { Changes, reposBeside } from "./changes.ts";
 import { laneKeys, Minds } from "./mind.ts";
 import { eitherTickets, PraxisTickets } from "./tickets.ts";
 
@@ -130,8 +131,11 @@ const exchange = async () => { await takeFromReplica(); await giveToReplica(); }
 void exchange();
 setInterval(() => void exchange(), 60_000);
 
+// E-1's last slice: THE CHANGES -- what was pushed lately in the clones beside this one, and GitHub's open pull requests
+const changes = new Changes({ repos: reposBeside(DAEMONS, COMPANION, ROOT, dirname(ROOT)), tickets });
+
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
-                           redmine: tickets, answers, spaces, minds, laneOf, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
+                           redmine: tickets, answers, spaces, minds, laneOf, changes, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

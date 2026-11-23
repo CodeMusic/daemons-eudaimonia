@@ -355,3 +355,19 @@ dialog.space { width: min(1040px, calc(100vw - 32px)); }
 details.changes { margin: 18px 0 4px; font-size: 13px; }
 details.changes summary { cursor: pointer; color: var(--dim); letter-spacing: .1em; font-size: 12px; }
 details.changes ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+
+/* THE CHANGES (E-1's last slice): the pull requests, each with its reviewing daemon, and what was pushed lately */
+#changes h4 { font-size: 12px; letter-spacing: .1em; color: var(--dim); margin: 4px 0 6px; }
+#changes h4 + p { margin-top: 0; }
+.pulls, .changes { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.pull, .change { display: flex; align-items: flex-start; gap: 10px; background: var(--bg); border: 1px solid var(--line);
+                 border-radius: 8px; padding: 6px 10px; min-width: 0; }
+.pull-body, .change-body { display: flex; flex-direction: column; min-width: 0; }
+.change .subject { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pulls a, .changes a { color: var(--text); text-decoration: none; }
+.pulls a:hover, .changes a:hover { text-decoration: underline; }
+.change .tag.repo { margin: 2px 0 0; flex: none; min-width: 9.5em; text-align: center; }
+.sprite.small { width: 32px; height: 32px; flex: none; }
+.sprite.small.nobody { display: inline-grid; place-items: center; border-radius: 6px; background: var(--raised); color: var(--dim); }
+#changes button.tid { padding: 0 4px; font-size: 12px; }
+@media (max-width: 640px) { .change .tag.repo { min-width: 0; } }

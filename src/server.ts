@@ -23,6 +23,8 @@
 //   GET  /api/releases               every release, newest first   GET /api/release/<name>   one release's notes
 //   POST /api/ticket/<id>/answer {text, choice?, keep?}   (an admin) answer a ticket that waits on the user (answers.ts)
 //   GET  /release/<group>/notes.pdf  a sealed group's notes          GET /art/player.png       the player, the monkey
+//   GET  /api/changes                what was pushed lately in each repository, and the open pull requests, each with
+//                                    the lane whose daemon is to review it (changes.ts)
 //
 // THE SPACES (E-10): every space PRAXIS holds, its tickets and each ticket's page -- the mirrored ones (Redmine's, until
 // the cut-over) for anyone, a space of the site's own when signed in or public; changes only to the site's own:
@@ -51,6 +53,7 @@ import { actorOf, type Spaces } from "./spaces.ts";
 import { type Answers, ticketChoices } from "./answers.ts";
 import type { Releases } from "./releases.ts";
 import type { Minds } from "./mind.ts";
+import type { Changes } from "./changes.ts";
 import { allowed, home, ourHost } from "./reach.ts";
 
 export const COOKIE = "eudaimonia", EGG_COOKIE = "eudaimonia-egg";
@@ -72,7 +75,9 @@ export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?:
                         /** E-10: every space PRAXIS holds, and changes to the site's own (null: no PRAXIS here) */
                         spaces?: Spaces | null;
                         /** E-12: the lanes' working memory, and which lane a Redmine key is (null: none kept here) */
-                        minds?: Minds | null; laneOf?: ((key: string) => Promise<string | null>) | null };
+                        minds?: Minds | null; laneOf?: ((key: string) => Promise<string | null>) | null;
+                        /** E-1's last slice: the commits pushed and the pull requests open (null: none read here) */
+                        changes?: Changes | null };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -237,6 +242,14 @@ export function makeServer(o: Options): Server {
       return json(res, { item: it, canEdit: signedIn && !it.mirrored });
     }
 
+    if (path === "/api/changes" && method === "GET") {
+      if (!o.changes) return json(res, { changes: null, why: "This site reads no repositories." });
+      const v = await o.changes.view(), agents = o.accounts.agents();
+      return json(res, { changes: { ...v, pulls: v.pulls.map((p) => {
+        const daemon = p.reviewer ? agents.get(p.reviewer) ?? null : null;
+        return { ...p, daemon, daemonName: daemon == null ? null : o.avatars.daemon(daemon)?.name ?? null };
+      }) } });
+    }
     if (path === "/api/releases" && method === "GET") return json(res, { releases: o.releases?.list() ?? [] });
     const release = /^\/api\/release\/(v[0-9]+\.[0-9]+\.(?:[0-9]+|x))$/.exec(path);
     if (release && method === "GET") {
