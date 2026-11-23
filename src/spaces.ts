@@ -180,6 +180,20 @@ export class Spaces {
     return this.view(this.px.space(id)!);
   }
 
+  /** E-4: may this account choose whether the space is public? Its maker or an admin, and never a mirrored space (those
+   *  are THE DASHBOARD's, read by anyone who reaches the site: the user, 2026-11-21) */
+  canReach(s: Space, by: string, admin: boolean) { return !this.mirrored(s) && (admin || s.maker === by); }
+
+  /** E-4: a space of the site's own made public -- read by anyone who reaches the site -- or kept to the signed in
+   *  (PRAXIS's HOME reach) again. Off unless chosen; its maker or an admin chooses. */
+  setReach(by: string, prefix: string, isPublic: boolean, admin: boolean): SpaceView {
+    const s = this.own(prefix);
+    if (!this.canReach(s, by, admin)) throw new Refused("Only the space's maker or an admin chooses whether it is public.", 403);
+    const reach = isPublic ? "public" : "home";
+    if (s.reach !== reach) { this.px.setSpace(s.id, "reach", reach, { actor: by }); this.changed(); }
+    return this.view(this.px.space(s.id)!);
+  }
+
   /** a new ticket in a space of the site's own, numbered at once (this replica keeps the space) */
   make(by: string, prefix: string, o: Record<string, unknown>): string {
     const s = this.own(prefix);

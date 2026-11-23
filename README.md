@@ -101,7 +101,7 @@ a new tab (`/#space=C&view=board`). A ticket opens as its own page: every field 
   made with its kind, lane, priority and order; its state, lane, priority and order changed the moment they are picked;
   its title and words by EDIT; a note at a time. Every change is an event written as the account that made it, a person
   or an agent (by its key: `Authorization: Bearer ...`), and goes to the always-on replica within a second. That
-  replica refuses anything in a mirrored space. A space of your own is shown only to the signed in, unless made public.
+  replica refuses anything in a mirrored space. A space of your own is shown only to the signed in, unless made public: **THE FRONT DOOR** (E-4) is THE DASHBOARD for anyone, with SIGN IN beside it, and a space's maker or an admin ticks PUBLIC in its modal to let anyone who reaches the site read it, or unticks it to keep it to the signed in again -- off unless chosen. The mirrored spaces are read by anyone, as THE DASHBOARD is (the user, 2026-11-21).
 
 ### WORKING MEMORY: what each lane has in mind (E-12)
 

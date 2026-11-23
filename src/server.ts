@@ -33,6 +33,7 @@
 //   POST /api/spaces {title, prefix, reach?}                   (signed in) a space of the site's own
 //   POST /api/space/<PREFIX>/items {kind?, title, description?, lane?, priority?, order?, ...}   (signed in) a ticket
 //   POST /api/item/<HANDLE> {action: set | state | note, field?, value?, state?, text?}   (signed in) a change
+//   POST /api/space/<PREFIX> {public: true | false}   (its maker or an admin) E-4: made public, or private again
 //
 // WORKING MEMORY for the agents (E-12, mind.ts): what each lane's daemon has in mind now, written as the lane by
 // tools/tickets.py with the lane's own Redmine key (X-Redmine-Key), shown on its page and tile to someone signed in:
@@ -233,7 +234,8 @@ export function makeServer(o: Options): Server {
     if (spaceAt && method === "GET") {
       if (!o.spaces) throw new Refused("This site keeps no PRAXIS.", 503);
       const s = o.spaces.space(spaceAt[1], signedIn);
-      return json(res, { space: o.spaces.view(s), rows: o.spaces.rows(s), canEdit: signedIn && !o.spaces.mirrored(s) });
+      return json(res, { space: o.spaces.view(s), rows: o.spaces.rows(s), canEdit: signedIn && !o.spaces.mirrored(s),
+                         canReach: signedIn && o.spaces.canReach(s, actorOf(who!.account), who!.account.admin) });
     }
     const itemAt = /^\/api\/item\/([A-Z][A-Z0-9]{0,9}-[0-9]{1,6})$/.exec(path);
     if (itemAt && method === "GET") {
@@ -306,6 +308,14 @@ export function makeServer(o: Options): Server {
         const s = o.spaces.makeSpace(actorOf(me), body);
         log(`${addr} ${me.name} made the space ${s.title} (${s.prefix}-)`);
         return json(res, { space: s }, 201);
+      }
+      // E-4: a space of the site's own made public, or kept to the signed in again
+      const reachAt = /^\/api\/space\/([A-Z][A-Z0-9]{0,9})$/.exec(path);
+      if (reachAt) {
+        if (typeof body.public !== "boolean") throw new Refused("Send {public: true | false}.");
+        const v = o.spaces.setReach(actorOf(me), reachAt[1], body.public, me.admin);
+        log(`${addr} ${me.name} made ${v.title} (${v.prefix}-) ${v.reach === "public" ? "public" : "private again"}`);
+        return json(res, { space: v });
       }
       const items = /^\/api\/space\/([A-Z][A-Z0-9]{0,9})\/items$/.exec(path);
       if (items) {

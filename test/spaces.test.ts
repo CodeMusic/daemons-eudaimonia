@@ -161,3 +161,26 @@ test("the API: anyone reads, a signed-in account or an agent's key changes, and 
   assert.deepEqual(signedIn.spaces.map((v: { prefix: string }) => v.prefix), ["T", "HOME"]);
   assert.equal(signedIn.canMake, true);
 });
+
+test("E-4: a space of the site's own is private until its maker or an admin makes it public, and private again", () => {
+  const { p } = mirrored();
+  let changed = 0;
+  const s = new Spaces(p, { changed: () => changed++ });
+  s.makeSpace("person:ada", { title: "Recipes", prefix: "FOOD" });
+  assert.equal(s.list(false).some((v) => v.prefix === "FOOD"), false, "off unless chosen");
+  const own = s.space("FOOD", true), t = s.space("T", true);
+  assert.equal(s.canReach(own, "person:ada", false), true);
+  assert.equal(s.canReach(own, "person:bob", false), false);
+  assert.equal(s.canReach(own, "person:bob", true), true, "an admin may");
+  assert.equal(s.canReach(t, "person:bob", true), false, "a mirrored space is THE DASHBOARD's");
+  assert.throws(() => s.setReach("person:bob", "FOOD", true, false), /maker or an admin/);
+  assert.throws(() => s.setReach("person:admin", "T", true, true), /Redmine's/);
+  const before = changed;
+  assert.equal(s.setReach("person:ada", "FOOD", true, false).reach, "public");
+  assert.ok(s.list(false).some((v) => v.prefix === "FOOD"));
+  assert.doesNotThrow(() => s.space("FOOD", false));
+  s.setReach("person:ada", "FOOD", true, false);
+  assert.equal(changed, before + 1, "the same choice again writes nothing");
+  assert.equal(s.setReach("person:admin", "FOOD", false, true).reach, "home");
+  assert.throws(() => s.space("FOOD", false), /No space FOOD/);
+});

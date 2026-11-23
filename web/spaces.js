@@ -29,7 +29,8 @@ function drawPanel() {
   const list = spaces.length ? el("ul", { class: "spaces" }, spaces.map((s) => el("li", { class: "space-row" },
     el("button", { class: "space-name link", onclick: () => openSpace(s.prefix, "list") }, el("b", {}, s.title),
       el("small", { class: "dim" }, ` ${s.prefix}-`)),
-    el("span", { class: `tag ${s.mirrored ? "" : "warn"}` }, s.mirrored ? "FROM REDMINE" : s.reach === "public" ? "PUBLIC" : "YOURS"),
+    el("span", { class: `tag ${s.mirrored ? "" : "warn"}`, title: s.mirrored ? "Public, as THE DASHBOARD is" : s.reach === "public"
+      ? "Anyone who reaches the site can read it" : "Only the signed in can read it" }, s.mirrored ? "FROM REDMINE" : s.reach === "public" ? "PUBLIC" : "PRIVATE"),
     bar(s.closed, s.open + s.closed),
     el("small", { class: "dim space-counts" }, `${s.closed} closed · ${s.open} open${s.working ? ` · ${s.working} at work` : ""}`),
     el("span", { class: "space-views" }, VIEWS.map((v) => el("button", { class: "link", onclick: () => openSpace(s.prefix, v) }, v.toUpperCase()))))))
@@ -71,10 +72,10 @@ async function openSpace(prefix, view = "list") {
 
 function drawSpace() {
   if (!current?.data) return;
-  const { space: s, rows, canEdit } = current.data, f = current.filter;
+  const { space: s, rows, canEdit, canReach } = current.data, f = current.filter;
   $("space-title").textContent = `${s.title} · ${s.prefix}-`;
   $("space-line").textContent = [s.mirrored ? "Mirrored from Redmine: read here, changed there until the cut-over"
-    : `${s.reach === "public" ? "Public" : "Yours"}, made by ${s.by} ${day(s.made)}`, `${s.open} open`, `${s.closed} closed`].join(" · ");
+    : `${s.reach === "public" ? "Public: anyone who reaches the site reads it" : "Private: only the signed in read it"}, made by ${s.by} ${day(s.made)}`, `${s.open} open`, `${s.closed} closed`].join(" · ");
   $("space-full").href = `/#space=${s.prefix}&view=${current.view}`;
   $("space-tabs").replaceChildren(...VIEWS.map((v) => el("button", { role: "tab", "aria-selected": String(v === current.view),
     class: v === current.view ? "tab on" : "tab", onclick: () => { current.view = v; if ($("space").classList.contains("full"))
@@ -88,8 +89,22 @@ function drawSpace() {
   $("space-tools").replaceChildren(...[search, lane,
     current.view === "list" && el("label", { class: "check" }, el("input", { type: "checkbox", checked: f.closed,
       onchange: (e) => { f.closed = e.target.checked; drawBody(); } }), "closed too"),
+    canReach && reachToggle(s),
     canEdit && el("button", { class: "primary", onclick: () => { current.making = !current.making; drawBody(); } }, "+ A TICKET")].filter(Boolean));
   drawBody();
+}
+
+/** E-4: whether a space of your own is PUBLIC -- read by anyone who reaches the site -- off unless chosen */
+function reachToggle(s) {
+  const box = el("input", { type: "checkbox", checked: s.reach === "public" });
+  box.addEventListener("change", async () => {
+    box.disabled = true;
+    try { await api("POST", `/api/space/${encodeURIComponent(s.prefix)}`, { public: box.checked }); await refresh(); }
+    catch (e) { box.checked = !box.checked; alert(e.message); }
+    finally { box.disabled = false; }
+  });
+  return el("label", { class: "check reach", title: "Anyone who reaches the site can read a public space; only the signed in read the rest." },
+    box, "PUBLIC");
 }
 
 function filtered() {
