@@ -176,6 +176,7 @@ export function sandboxEnv(o: { root: string; proxyPort: number; path: string; p
     PATH: o.path, HOME: `${o.root}/home`, TMPDIR: `${o.root}/tmp`, LANG: "en_US.UTF-8",
     HTTPS_PROXY: p, HTTP_PROXY: p, https_proxy: p, http_proxy: p, ALL_PROXY: p, NO_PROXY: "", no_proxy: "",
     npm_config_cache: `${o.root}/home/.npm`, GIT_CONFIG_NOSYSTEM: "1",
+    NODE_USE_ENV_PROXY: "1",   // Node's own fetch through the proxy (Node 22.21+, 24.5+)
     EUDAIMONIA_LANE: o.lane, EUDAIMONIA_TICKET: o.ticket, EUDAIMONIA_BRANCH: o.branch, EUDAIMONIA_SANDBOX: o.root,
     ...(o.pass ?? {}),
   };

@@ -24,8 +24,11 @@ function pull(p) {
     el("span", { class: "pull-body" },
       el("a", { href: p.url, target: "_blank", rel: "noopener" }, `#${p.number} ${p.subject}`),
       el("small", { class: "dim" }, [p.title, p.draft && "a draft", ago(p.at),
-        who ? `for ${who} to review, once its daemon works in its sandbox (E-15)` : "no ticket named, so no lane to review it"]
+        p.review ? null : who ? `for ${who} to review` : "no ticket named, so no lane to review it"]
         .filter(Boolean).join(" · ")),
+      p.review && el("a", { class: `review v-${p.review.verdict.toLowerCase().replace(/\s+/g, "-")}`, href: p.review.url, target: "_blank",
+        rel: "noopener" }, `${who ?? p.review.lane.toUpperCase()} REVIEWED IT: ${p.review.verdict}`,
+        el("small", { class: "dim" }, p.review.current ? ` · ${ago(p.review.at)}` : " · before its last change")),
       el("span", {}, chips(p.tickets))));
 }
 

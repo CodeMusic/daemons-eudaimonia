@@ -400,3 +400,8 @@ label.play-way input { width: auto; flex: none; margin: 3px 0 0; }
 /* the admin's way to choose a lane's daemon: the sprite (or its ?) itself */
 .sprite-pick { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
 .sprite-pick:hover, .sprite-pick:focus-visible { outline: 2px dashed currentColor; outline-offset: 4px; }
+
+/* E-16: a daemon's review of a pull request */
+.pull a.review { font-size: 12px; letter-spacing: .06em; font-weight: 700; color: var(--ok); }
+.pull a.review.v-needs-changes { color: var(--bad); }
+.pull a.review.v-questions { color: var(--accent); }

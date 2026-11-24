@@ -151,6 +151,24 @@ Three walls, none of them the agent's good manners (`src/sandbox.ts`, `src/sandb
 Each run is logged in `data/sandbox/runs.jsonl` and its root removed when it ends (`--keep` keeps it, `--dry-run`
 pushes nothing, `--hours` stops it, two by default). It refuses to start with under 3 GB free.
 
+### THE REVIEWS: the lanes' daemons read the pull requests (E-16)
+
+Each open pull request that names a ticket is reviewed by **the daemon of that ticket's lane**, in the lane's own
+sandbox (above), and THE CHANGES shows its verdict -- LOOKS RIGHT, NEEDS CHANGES or QUESTIONS -- linking to the review:
+
+    ./bindEudaimonia.sh review --all [--dry-run]             every open pull request with a lane, once for each head
+    ./bindEudaimonia.sh review --repo R --pr N [--dry-run]   one, again with --force
+    ./bindEudaimonia.sh review always | never                every quarter of an hour, as a login agent (data/review.log)
+
+Out here, with this machine's own sign-ins, the runner reads the diff (gh), the ticket (Redmine) and the daemon's name
+(THE DASHBOARD). In the sandbox, with only the files the pull request changed checked out at its head,
+`src/review_agent.ts` asks **the house's own model** -- LiteLLM on roverbyteseer, `tiiny-35b` unless `REVIEW_MODEL`
+says otherwise, its key read over ssh and handed in by name -- and leaves its review as a file. Out here again, only a
+plain file is taken (a link it left is never followed), its words are made safe (no @-mention calls anyone, no comment
+forges a marker), and it is posted as a comment review headed with the daemon's name and ending in a hidden marker
+(`<!-- eudaimonia-review lane=... sha=... verdict=... -->`) that THE CHANGES reads back. A review is a DRAFT: a person
+decides. Each is logged in `data/sandbox/reviews.jsonl`.
+
 ## The DAEMONS playground
 
 **An all-in-one harness to demo and beta test [DAEMONS](https://github.com/CodeMusic/DAEMONS)**, the whole game and

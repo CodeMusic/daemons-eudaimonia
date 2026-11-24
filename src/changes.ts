@@ -17,8 +17,16 @@ const COMMITS_EACH = 12, COMMITS_MOST = 30, COMMITS_MS = 2 * 60 * 1000, PULLS_MS
 export type Repo = { name: string; dir: string; title: string };
 export type Change = { repo: string; title: string; sha: string; subject: string; at: string; tickets: string[]; url: string };
 export type Pull = { repo: string; title: string; number: number; subject: string; at: string; author: string; draft: boolean;
-                     url: string; tickets: string[]; reviewer: string | null };
+                     url: string; tickets: string[]; reviewer: string | null;
+                     /** E-16: its daemon's newest review, and whether it was of the head the pull request has now */
+                     review: Review | null };
 export type ChangesView = { at: string; commits: Change[]; pulls: Pull[]; pullsWhy: string | null };
+
+/** E-16: the marker a daemon's review ends in -- which lane, at which head, its verdict -- written by review_main.ts */
+export const marker = (lane: string, sha: string, verdict: string) =>
+  `<!-- eudaimonia-review lane=${lane} sha=${sha} verdict=${verdict.replace(/\s+/g, "-")} -->`;
+export const MARKER = /<!-- eudaimonia-review lane=([a-z0-9-]{1,20}) sha=([0-9a-f]{7,40}) verdict=([A-Z-]{1,20}) -->/;
+export type Review = { lane: string; sha: string; verdict: string; url: string; at: string; current: boolean };
 
 export const ticketsIn = (s: string) => [...new Set([...s.matchAll(IDS)].map((m) => m[1]))];
 
@@ -90,10 +98,11 @@ export class Changes {
                                      { headers: { Accept: "application/vnd.github+json", "User-Agent": "eudaimonia-dashboard" } });
         if (!res.ok) { why = `GitHub said ${res.status}`; continue; }
         for (const p of (await res.json()) as { number: number; title: string; html_url: string; updated_at: string;
-                                                  draft?: boolean; user?: { login?: string }; head?: { ref?: string } }[]) {
+                                                  draft?: boolean; user?: { login?: string }; head?: { ref?: string; sha?: string } }[]) {
           const tickets = ticketsIn(`${p.title} ${p.head?.ref ?? ""}`);
           v.push({ repo: r.name, title: r.title, number: p.number, subject: p.title, at: p.updated_at, author: p.user?.login ?? "",
-                   draft: !!p.draft, url: p.html_url, tickets, reviewer: await this.laneOf(tickets) });
+                   draft: !!p.draft, url: p.html_url, tickets, reviewer: await this.laneOf(tickets),
+                   review: await this.reviewOf(r.name, p.number, p.head?.sha ?? "") });
         }
       } catch (e) { why = `GitHub can't be reached (${(e as Error).message})`; }
     }
@@ -102,6 +111,22 @@ export class Changes {
     if (why && this.pulls && !v.length) return { ...this.pulls, why };
     this.pulls = { at: this.now(), v, why };
     return this.pulls;
+  }
+
+  /** E-16: a daemon's newest review of it, read back by its marker (none: null) */
+  private async reviewOf(repo: string, n: number, head: string): Promise<Review | null> {
+    try {
+      const res = await this.fetch(`https://api.github.com/repos/${OWNER}/${repo}/pulls/${n}/reviews?per_page=100`,
+                                   { headers: { Accept: "application/vnd.github+json", "User-Agent": "eudaimonia-dashboard" } });
+      if (!res.ok) return null;
+      let out: Review | null = null;
+      for (const r of (await res.json()) as { body?: string; html_url?: string; submitted_at?: string }[]) {
+        const m = MARKER.exec(r.body ?? "");
+        if (m && (!out || (r.submitted_at ?? "") >= out.at))
+          out = { lane: m[1], sha: m[2], verdict: m[3].replace(/-/g, " "), url: r.html_url ?? "", at: r.submitted_at ?? "", current: m[2] === head };
+      }
+      return out;
+    } catch { return null; }
   }
 
   /** the daemon to review it: the lane of the first ticket it names that has one */

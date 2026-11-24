@@ -57,6 +57,18 @@ test("a pull request names its reviewer: the lane of its ticket", async () => {
   assert.deepEqual([v.pulls[1].reviewer, v.pulls[1].draft], [null, true]);
 });
 
+test("E-16: a daemon's newest review is read back by its marker, and whether it was of the head", async () => {
+  const pulls = [{ number: 7, title: "E-15: the sandbox", html_url: "u7", updated_at: "2026-11-23T10:00:00Z", head: { ref: "e15", sha: "bbbbbbb" } }];
+  const reviews = [{ body: "**X** <!-- eudaimonia-review lane=playground sha=aaaaaaa verdict=NEEDS-CHANGES -->", html_url: "r1", submitted_at: "2026-11-23T11:00:00Z" },
+                   { body: "a person's words", html_url: "r2", submitted_at: "2026-11-23T13:00:00Z" },
+                   { body: "**X** <!-- eudaimonia-review lane=playground sha=bbbbbbb verdict=LOOKS-RIGHT -->", html_url: "r3", submitted_at: "2026-11-23T12:00:00Z" }];
+  const fetch = async (url: string) => ({ ok: true, status: 200,
+    json: async () => (url.includes("/reviews") ? reviews : url.includes("DAEMONS") ? pulls : []) });
+  const c = new Changes({ repos, git: async () => "", fetch, now: () => 1, tickets: { ticket: async () => ({ lane: "playground" }) } as never });
+  const [p] = (await c.view()).pulls;
+  assert.deepEqual(p.review, { lane: "playground", sha: "bbbbbbb", verdict: "LOOKS RIGHT", url: "r3", at: "2026-11-23T12:00:00Z", current: true });
+});
+
 test("GitHub is asked a quarter of an hour at a time, git every two minutes", async () => {
   const { c, tick, counts } = make();
   await c.view(); await c.view();

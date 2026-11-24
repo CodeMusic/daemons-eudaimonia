@@ -4,6 +4,9 @@
 //        which repositories the lane's sandbox would hold, and why (the tickets it holds)
 //   ./bindEudaimonia.sh sandbox run --lane game --ticket T-604 [--pass ANTHROPIC_API_KEY] [--hours 2] [--keep]
 //        [--dry-run] [--no-pr] [--remote-base URL] -- <the agent's command> [args...]
+//        E-16 (review_main.ts): [--repos R --pr N] starts from that pull request's head; [--input DIR] is copied in as
+//        <root>/input, <root>/output is copied out to [--output DIR]; [--no-push] pushes nothing; [--sparse FILE] checks out
+//        only the paths FILE names, one a line
 //
 // A run: every repository the lane holds a ticket in (its open tickets in Redmine, and --ticket) is cloned --shared into
 // data/sandbox/<run>/, on the branch agent/<lane>/<ticket> from what was last pushed; the command runs there under
@@ -12,7 +15,7 @@
 // request opened for it. The run is logged in data/sandbox/runs.jsonl and its root removed (--keep keeps it).
 // --dry-run pushes nothing; --remote-base pushes to <URL>/<repo>.git instead of GitHub (a test's bare repositories).
 import { execFile, spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statfsSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, statfsSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -30,7 +33,11 @@ const say = (l: string) => console.log("sandbox: " + l);
 const git = async (args: string[], cwd?: string) => (await run("git", args, { cwd, maxBuffer: 1 << 24 })).stdout.trim();
 
 type Args = { cmd: string; lane: string; ticket: string; pass: string[]; hours: number; keep: boolean; dry: boolean; pr: boolean;
-              remoteBase: string | null; repos: string[] | null; command: string[] };
+              remoteBase: string | null; repos: string[] | null; command: string[];
+              /** E-16: start from a pull request's head (its repository alone); files handed in and taken out; no push */
+              prNumber: number | null; input: string | null; output: string | null; push: boolean;
+              /** only these paths checked out (a file of them, one a line): a review needs the files it changed alone */
+              sparse: string | null };
 
 function parse(argv: string[]): Args {
   const dash = argv.indexOf("--");
@@ -40,7 +47,13 @@ function parse(argv: string[]): Args {
   const a: Args = { cmd: own[0] ?? "", lane: opt("--lane") ?? "", ticket: (opt("--ticket") ?? "").toUpperCase(), pass: all("--pass"),
                     hours: Number(opt("--hours") ?? 2), keep: own.includes("--keep"), dry: own.includes("--dry-run"),
                     pr: !own.includes("--no-pr"), remoteBase: opt("--remote-base") ?? null,
-                    repos: opt("--repos") ? opt("--repos")!.split(",").filter(Boolean) : null, command };
+                    repos: opt("--repos") ? opt("--repos")!.split(",").filter(Boolean) : null, command,
+                    prNumber: opt("--pr") ? Number(opt("--pr")) : null, input: opt("--input") ?? null, output: opt("--output") ?? null,
+                    push: !own.includes("--no-push"), sparse: opt("--sparse") ?? null };
+  if (a.prNumber !== null && (!Number.isInteger(a.prNumber) || a.prNumber < 1 || a.repos?.length !== 1)) {
+    console.error("sandbox: --pr N takes one repository, named with --repos");
+    process.exit(64);
+  }
   if (!["scope", "run"].includes(a.cmd) || !a.lane || !a.ticket) {
     console.error("usage: sandbox scope|run --lane L --ticket T-n [--pass VAR] [--hours N] [--keep] [--dry-run] [--no-pr] [--remote-base URL] [--repos a,b] -- command");
     process.exit(64);
@@ -96,13 +109,26 @@ async function main() {
     const src = join(PROJECTS, r), dst = join(root, r);
     bases[r] = await base(src);
     await git(["clone", "--quiet", "--shared", "--no-checkout", src, dst]);
+    if (a.sparse) {   // only the paths named: DAEMONS whole is 3 GB
+      const paths = readFileSync(a.sparse, "utf8").split("\n").filter((l) => l.trim() && !l.startsWith("!") && !l.includes(".."));
+      const child = spawn("git", ["-C", dst, "sparse-checkout", "set", "--no-cone", "--stdin"], { stdio: ["pipe", "ignore", "inherit"] });
+      child.stdin.end(paths.map((p) => "/" + p.replace(/^\/+/, "")).join("\n") + "\n");
+      await new Promise((ok) => child.on("exit", ok));
+    }
     await git(["checkout", "--quiet", "-b", branch, bases[r].sha], dst);
+    if (a.prNumber !== null) {   // E-16: the pull request's head, fetched out here (the agent reaches no remote of its own)
+      await git(["fetch", "--quiet", "--no-tags", `https://github.com/${OWNER}/${r}.git`, `pull/${a.prNumber}/head`], dst);
+      await git(["checkout", "--quiet", "-B", branch, "FETCH_HEAD"], dst);
+      bases[r] = { name: bases[r].name, sha: await git(["rev-parse", "HEAD"], dst) };
+    }
     await git(["remote", "remove", "origin"], dst);
     await git(["config", "user.name", `Lane ${a.lane}`], dst);   // its commits are the lane's own
     await git(["config", "user.email", `lane-${a.lane}@agents.daemons.codemusic.ca`], dst);
     reads.push(join(src, ".git", "objects"));
     say(`${r}: ${branch} from ${bases[r].name} (${bases[r].sha.slice(0, 9)})`);
   }
+  if (a.input) cpSync(a.input, join(root, "input"), { recursive: true });   // what the agent is handed
+  mkdirSync(join(root, "output"), { recursive: true });                      // and where it leaves what it made
   if (repos.includes("DAEMONS"))   // CLAUDE.md's symlinks, to the clones beside it
     for (const [link, repo] of Object.entries(ENGINE_LINKS))
       if (repos.includes(repo) && !existsSync(join(root, "DAEMONS", link))) symlinkSync(`../${repo}`, join(root, "DAEMONS", link));
@@ -129,13 +155,15 @@ async function main() {
   px.close();
   say(`the agent stopped (${code})${refused.length ? `; refused ${refused.length}: ${[...new Set(refused)].slice(0, 6).join(", ")}` : ""}`);
 
+  if (a.output) cpSync(join(root, "output"), a.output, { recursive: true, dereference: false });
+
   // OUT: each repository with commits on its branch, pushed from a clean copy, and a pull request
   const out: { repo: string; commits: number; pushed: boolean; pr: string | null }[] = [];
   for (const r of repos) {
     const dst = join(root, r);
     let commits = 0;
     try { commits = Number(await git(["rev-list", "--count", `${bases[r].sha}..refs/heads/${branch}`], dst)); } catch { /* the branch is gone */ }
-    if (!commits) continue;
+    if (!commits || !a.push) continue;
     const item = { repo: r, commits, pushed: false, pr: null as string | null };
     out.push(item);
     if (a.dry) { say(`${r}: ${commits} commit(s) on ${branch} -- not pushed (--dry-run)`); continue; }

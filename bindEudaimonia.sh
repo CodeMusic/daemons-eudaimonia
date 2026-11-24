@@ -16,6 +16,8 @@
 #   ./bindEudaimonia.sh replica [--port N]  PRAXIS's always-on replica alone, mirroring Redmine (E-9; roverbyteseer, 4742)
 #   ./bindEudaimonia.sh replica always|never  keep the replica running as a login agent, or stop doing that
 #   ./bindEudaimonia.sh sandbox scope|run --lane L --ticket T-n [...] -- command   an agent in its sandbox (E-15)
+#   ./bindEudaimonia.sh review --all | --repo R --pr N [--dry-run]   the lanes' daemons review pull requests (E-16)
+#   ./bindEudaimonia.sh review always|never   do that every quarter of an hour, as a login agent
 #
 # It reads the ROMs from DAEMONS beside this repository (../DAEMONS, or $DAEMONS_ROOT) and answers only this machine,
 # a private network and the tailnet. The COMPANION tab is a companion of the playground's own, one for each build,
@@ -95,6 +97,34 @@ need_engine() {   # the engine npm last installed is the commit the lockfile pin
 }
 REPLICA_AGENT="$HOME/Library/LaunchAgents/ca.codemusic.praxis-replica.plist"
 case "${1:-}" in
+  review) shift; NODE="$(site_node)" || { echo "bindEudaimonia: the reviews need Node 22.18 or newer" >&2; exit 69; }
+    REVIEW_AGENT="$HOME/Library/LaunchAgents/ca.codemusic.eudaimonia-review.plist"
+    if [[ "${1:-}" == always ]]; then   # E-16: every quarter of an hour, every open pull request with a lane
+      mkdir -p data "$(dirname "$REVIEW_AGENT")"
+      cat > "$REVIEW_AGENT" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ca.codemusic.eudaimonia-review</string>
+  <key>ProgramArguments</key>
+  <array><string>$NODE</string><string>$PWD/src/review_main.ts</string><string>--all</string></array>
+  <key>WorkingDirectory</key><string>$PWD</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>$PATH</string></dict>
+  <key>StartInterval</key><integer>900</integer>
+  <key>StandardOutPath</key><string>$PWD/data/review.log</string>
+  <key>StandardErrorPath</key><string>$PWD/data/review.log</string>
+</dict>
+</plist>
+PLIST
+      launchctl bootout "gui/$(id -u)/ca.codemusic.eudaimonia-review" 2>/dev/null || true
+      launchctl bootstrap "gui/$(id -u)" "$REVIEW_AGENT" && echo "bindEudaimonia: the daemons review every quarter of an hour (data/review.log)"
+      exit 0
+    elif [[ "${1:-}" == never ]]; then
+      launchctl bootout "gui/$(id -u)/ca.codemusic.eudaimonia-review" 2>/dev/null || true
+      rm -f "$REVIEW_AGENT"; echo "bindEudaimonia: the daemons review no more on their own"; exit 0
+    fi
+    exec "$NODE" src/review_main.ts "$@" ;;
   sandbox) shift; NODE="$(site_node)" || { echo "bindEudaimonia: the sandbox needs Node 22.18 or newer" >&2; exit 69; }
     exec "$NODE" src/sandbox_main.ts "$@" ;;
   site) shift; NODE="$(site_node)" || { echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer" >&2; exit 69; }
