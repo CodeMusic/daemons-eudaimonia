@@ -135,7 +135,9 @@ setInterval(() => void exchange(), 60_000);
 const changes = new Changes({ repos: reposBeside(DAEMONS, COMPANION, ROOT, dirname(ROOT)), tickets });
 
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
-                           redmine: tickets, answers, spaces, minds, laneOf, changes, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art") });
+                           redmine: tickets, answers, spaces, minds, laneOf, changes, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art"),
+                           // E-19: the public name the house's web server proxies here (comma-separated; "" for none)
+                           publicHosts: (process.env.EUDAIMONIA_PUBLIC_HOSTS ?? "dashboard.daemons.codemusic.ca").split(",") });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);

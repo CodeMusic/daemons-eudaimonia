@@ -55,7 +55,7 @@ import { type Answers, ticketChoices } from "./answers.ts";
 import type { Releases } from "./releases.ts";
 import type { Minds } from "./mind.ts";
 import type { Changes } from "./changes.ts";
-import { allowed, home, ourHost } from "./reach.ts";
+import { allowed, forwardedFor, home, ourHost, proxied, publicName } from "./reach.ts";
 
 export const COOKIE = "eudaimonia", EGG_COOKIE = "eudaimonia-egg";
 const BODY_MOST = 16 * 1024, FAILS_MOST = 8, FAILS_WINDOW_MS = 15 * 60 * 1000;
@@ -79,7 +79,9 @@ export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?:
                         /** E-12: the lanes' working memory, and which lane a Redmine key is (null: none kept here) */
                         minds?: Minds | null; laneOf?: ((key: string) => Promise<string | null>) | null;
                         /** E-1's last slice: the commits pushed and the pull requests open (null: none read here) */
-                        changes?: Changes | null };
+                        changes?: Changes | null;
+                        /** E-19: public names this site answers through the house's proxy (dashboard.daemons.codemusic.ca) */
+                        publicHosts?: readonly string[] };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -87,6 +89,10 @@ export function makeServer(o: Options): Server {
   const log = o.log ?? ((l: string) => console.log("eudaimonia: " + l));
   const now = o.now ?? (() => Date.now());
   const fails = new Map<string, number[]>();
+  const publics = (o.publicHosts ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean);
+  // E-19: a request by a public name, through the proxy in the house: the Host is that name and the hops are said
+  const isPublic = (req: IncomingMessage) => proxied(req.headers) && publicName(req.headers.host, publics);
+  const secure = (req: IncomingMessage) => (isPublic(req) ? "; Secure" : "");
   // the front page frames the playground's page, on this same host, as THE EASTER EGG's player (egg.js)
   const port = o.player ?? 4740;
   const page = { "Content-Security-Policy": HEADERS["Content-Security-Policy"] + `; frame-src http://*:${port} https://*:${port}` };
@@ -100,13 +106,14 @@ export function makeServer(o: Options): Server {
 
   return createServer(async (req, res) => {
     const addr = req.socket.remoteAddress ?? "";
-    if (!allowed(addr) || !ourHost(req.headers.host)) {
+    if (!allowed(addr) || !(ourHost(req.headers.host) || isPublic(req))) {
       res.writeHead(403, { "Content-Type": "text/plain", ...HEADERS }).end("not an address of this site's\n");
       req.destroy();
       return;
     }
     try {
-      await route(req, res, addr);
+      // failed sign-ins are counted per visitor: through the proxy every visitor shares its one address
+      await route(req, res, addr, isPublic(req) ? forwardedFor(req.headers) ?? addr : addr);
     } catch (e) {
       if (e instanceof Refused) return json(res, { error: e.message }, e.status);
       log(`${addr} ${req.method} ${req.url}: ${(e as Error).stack ?? e}`);
@@ -114,7 +121,7 @@ export function makeServer(o: Options): Server {
     }
   });
 
-  async function route(req: IncomingMessage, res: ServerResponse, addr: string) {
+  async function route(req: IncomingMessage, res: ServerResponse, addr: string, client: string) {
     const url = new URL(req.url ?? "/", "http://site");
     const path = url.pathname, method = req.method ?? "GET";
 
@@ -164,7 +171,7 @@ export function makeServer(o: Options): Server {
     if (method !== "GET" && method !== "HEAD" && !bearer) {
       // a browser's POST: from this site's own page, as JSON
       const origin = req.headers.origin;
-      if (!origin || !sameSite(origin, req.headers.host)) throw new Refused("Not from a page of this site's.", 403);
+      if (!origin || !sameSite(origin, req.headers.host, isPublic(req) ? publics : [])) throw new Refused("Not from a page of this site's.", 403);
       if (!/^application\/json\b/.test(req.headers["content-type"] ?? "")) throw new Refused("Send JSON.", 415);
     }
     const who: Who = o.accounts.who(cookie(req, COOKIE), bearer);
@@ -177,14 +184,14 @@ export function makeServer(o: Options): Server {
       return json(res, { account: who ? shown(who.account) : null, limited: !!who?.limited, avatars: o.avatars.count });
 
     if (path === "/api/signin" && method === "POST") {
-      if (throttled(addr)) throw new Refused("Too many tries. Wait a quarter of an hour and try again.", 429);
+      if (throttled(client)) throw new Refused("Too many tries. Wait a quarter of an hour and try again.", 429);
       try {
         const r = await o.accounts.signIn(String(body.name ?? ""), String(body.password ?? ""), home(addr, req.headers));
         log(`${addr} signed in as ${r.account.name}${r.account.mustChange ? " (its password to be changed)" : ""}`);
-        setCookie(res, r.session, r.account.mustChange);
+        setCookie(res, r.session, r.account.mustChange, secure(req));
         return json(res, { account: r.account, limited: r.account.mustChange });
       } catch (e) {
-        if (e instanceof Refused && e.status === 401) failed(addr);
+        if (e instanceof Refused && e.status === 401) failed(client);
         if (e instanceof Refused) log(`${addr} sign-in refused for ${JSON.stringify(String(body.name ?? "").slice(0, 32))}: ${e.message}`);
         throw e;
       }
@@ -192,7 +199,7 @@ export function makeServer(o: Options): Server {
 
     if (path === "/api/signout" && method === "POST") {
       o.accounts.signOut(cookie(req, COOKIE));
-      res.setHeader("Set-Cookie", `${COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+      res.setHeader("Set-Cookie", `${COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure(req)}`);
       return json(res, { ok: true });
     }
 
@@ -267,14 +274,14 @@ export function makeServer(o: Options): Server {
       return json(res, { ...o.egg.carts(), pass: o.accounts.hasEggPass(cookie(req, EGG_COOKIE)), player: o.player ?? 4740 });
     }
     if (path === "/api/egg/open" && method === "POST") {
-      if (throttled(addr)) throw new Refused("Too many tries. Wait a quarter of an hour and try again.", 429);
+      if (throttled(client)) throw new Refused("Too many tries. Wait a quarter of an hour and try again.", 429);
       try {
         const t = await o.accounts.eggPass(String(body.password ?? ""));
         log(`${addr} opened THE EASTER EGG`);
-        res.setHeader("Set-Cookie", `${EGG_COOKIE}=${encodeURIComponent(t)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+        res.setHeader("Set-Cookie", `${EGG_COOKIE}=${encodeURIComponent(t)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}${secure(req)}`);
         return json(res, { pass: true });
       } catch (e) {
-        if (e instanceof Refused && e.status === 401) failed(addr);
+        if (e instanceof Refused && e.status === 401) failed(client);
         throw e;
       }
     }
@@ -382,8 +389,8 @@ export function makeServer(o: Options): Server {
   }
 }
 
-function sameSite(origin: string, host: string | undefined) {
-  try { return new URL(origin).host === (host ?? "").toLowerCase() && ourHost(origin); } catch { return false; }
+function sameSite(origin: string, host: string | undefined, publics: readonly string[] = []) {
+  try { return new URL(origin).host === (host ?? "").toLowerCase() && (ourHost(origin) || publicName(origin, publics)); } catch { return false; }
 }
 
 function cookie(req: IncomingMessage, name: string): string | null {
@@ -394,9 +401,9 @@ function cookie(req: IncomingMessage, name: string): string | null {
   return null;
 }
 
-function setCookie(res: ServerResponse, token: string, limited: boolean) {
+function setCookie(res: ServerResponse, token: string, limited: boolean, secure = "") {
   const age = limited ? 15 * 60 : 30 * 24 * 60 * 60;
-  res.setHeader("Set-Cookie", `${COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}`);
+  res.setHeader("Set-Cookie", `${COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${secure}`);
 }
 
 function read(req: IncomingMessage): Promise<Record<string, unknown>> {

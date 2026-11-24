@@ -65,6 +65,28 @@ export function ourHost(hostOrUrl: string | undefined): boolean {
 const HOPS = ["forwarded", "x-forwarded-for", "x-real-ip"];
 
 /** Home: a socket address that is allowed, and no proxy between it and this server. */
+/** E-19: a public name this site was given (EUDAIMONIA_PUBLIC_HOSTS), e.g. dashboard.daemons.codemusic.ca behind the
+ * home web server's proxy. Only ever accepted with a proxy's hop headers on a request from an allowed address -- the
+ * proxy in the house -- and such a request is never home(), so the first password still never works through it. */
+export function publicName(hostOrUrl: string | undefined, names: readonly string[]): boolean {
+  if (!names.length || !hostOrUrl) return false;
+  try {
+    const s = hostOrUrl.trim().toLowerCase();
+    return names.includes(new URL(s.includes("://") ? s : "https://" + s).hostname);
+  } catch { return false; }
+}
+
+/** The client a proxy says it is serving: the last address in X-Forwarded-For (the one our own proxy appended). */
+export function forwardedFor(headers: Record<string, string | string[] | undefined>): string | null {
+  const v = headers["x-forwarded-for"];
+  const last = (Array.isArray(v) ? v.join(",") : v ?? "").split(",").map((s) => s.trim()).filter(Boolean).pop();
+  return last || null;
+}
+
+export function proxied(headers: Record<string, string | string[] | undefined>): boolean {
+  return HOPS.some((h) => headers[h] !== undefined);
+}
+
 export function home(address: string | undefined, headers: Record<string, string | string[] | undefined>): boolean {
   return allowed(address) && !HOPS.some((h) => headers[h] !== undefined);
 }
