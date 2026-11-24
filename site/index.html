@@ -315,12 +315,15 @@ function available() {
 // save kept, downloaded and given to the companion as always. Asked to KEEP, it keeps the save and says KEPT; its
 // Change game becomes Back to your carts, which asks EUDAIMONIA to CLOSE it. A reload is the playground again.
 const cartHost = () => (window.parent !== window ? window.parent : window.opener);
+const PUBLIC_PAGES = { "play.daemons.codemusic.ca": "https://dashboard.daemons.codemusic.ca" };
 function handedFrom() {
   const m = /^#from=(.+)$/.exec(location.hash);
   if (!m || !cartHost()) return null;
   try {
     const u = new URL(decodeURIComponent(m[1]));
-    return u.hostname === location.hostname && u.protocol === location.protocol ? u.origin : null;
+    if (u.hostname === location.hostname && u.protocol === location.protocol) return u.origin;
+    // E-20: from away the player has a public name of its own, and only the dashboard's public name may hand it a cart
+    return PUBLIC_PAGES[location.hostname] === u.origin ? u.origin : null;
   } catch { return null; }
 }
 function awaitCart(from) {

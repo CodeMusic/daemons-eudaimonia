@@ -261,7 +261,8 @@ $("egg-release-form").addEventListener("submit", (ev) => {
 
 // ---- the player: the playground's page, framed over this one ------------------------------------------------------
 let player = null;     // { origin, frame, closing } while it is open
-const playerOrigin = () => `${location.protocol}//${location.hostname.includes(":") ? `[${location.hostname}]` : location.hostname}:${state.player}`;
+// E-20: from away (the public name) the player has a public address of its own; otherwise it is this host's other port
+const playerOrigin = () => state.playerUrl || `${location.protocol}//${location.hostname.includes(":") ? `[${location.hostname}]` : location.hostname}:${state.player}`;
 
 /** Frames the playground's page and hands it the ROM once it says it is ready -- to its origin alone. */
 function playIn(c, bytes, how, err) {

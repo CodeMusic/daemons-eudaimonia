@@ -83,6 +83,20 @@ def our_host(host_or_url):
     return name == "localhost" or name.endswith(".local") or name.endswith(".ts.net") or "." not in name
 
 
+# E-20: the public name the house's web server proxies to this player (play.daemons.codemusic.ca), so THE EASTER EGG plays
+# from away. Taken only on a request that carries a proxy's hops, from an allowed address -- the proxy in the house.
+PUBLIC_HOSTS = {h.strip().lower() for h in os.environ.get("PLAYGROUND_PUBLIC_HOSTS", "play.daemons.codemusic.ca").split(",") if h.strip()}
+HOPS = ("Forwarded", "X-Forwarded-For", "X-Real-IP")
+
+
+def public_name(host_or_url):
+    try:
+        s = (host_or_url or "").strip().lower()
+        return (urllib.parse.urlsplit(s if "://" in s else "https://" + s).hostname or "") in PUBLIC_HOSTS
+    except ValueError:
+        return False
+
+
 def version_key(name):
     """v11.306.3 -> (11, 306, 3); a sealed group, v11.305.x, holds that bible's last release: after all its numbers."""
     m = re.match(r"v(\d+)\.(\d+)\.(\d+|x)$", name)
@@ -494,13 +508,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not head:
             self.wfile.write(body)
 
+    def public(self):
+        """E-20: asked by its public name, through the house's proxy."""
+        return any(self.headers.get(h) is not None for h in HOPS) and public_name(self.headers.get("Host", ""))
+
     def refused(self):
         """Anything not from this machine's network, or naming a host or a page that is not this machine's."""
         if not allowed(self.client_address[0]):
             self.send_error(403, "this page is for this machine's network only")
-        elif not our_host(self.headers.get("Host", "")):
+        elif not (our_host(self.headers.get("Host", "")) or self.public()):
             self.send_error(403, "not an address of this playground's")
-        elif self.command not in ("GET", "HEAD") and not our_host(self.headers.get("Origin", "")):
+        elif self.command not in ("GET", "HEAD") and not (our_host(self.headers.get("Origin", ""))
+                                                          or (self.public() and public_name(self.headers.get("Origin", "")))):
             self.send_error(403, "not from a page of this playground's")
         else:
             return False

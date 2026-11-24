@@ -81,7 +81,9 @@ export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?:
                         /** E-1's last slice: the commits pushed and the pull requests open (null: none read here) */
                         changes?: Changes | null;
                         /** E-19: public names this site answers through the house's proxy (dashboard.daemons.codemusic.ca) */
-                        publicHosts?: readonly string[] };
+                        publicHosts?: readonly string[];
+                        /** E-20: the player's public address, for a page asked by a public name (https://play.daemons.codemusic.ca) */
+                        publicPlayer?: string | null };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -95,7 +97,8 @@ export function makeServer(o: Options): Server {
   const secure = (req: IncomingMessage) => (isPublic(req) ? "; Secure" : "");
   // the front page frames the playground's page, on this same host, as THE EASTER EGG's player (egg.js)
   const port = o.player ?? 4740;
-  const page = { "Content-Security-Policy": HEADERS["Content-Security-Policy"] + `; frame-src http://*:${port} https://*:${port}` };
+  const publicPlayer = o.publicPlayer ? new URL(o.publicPlayer).origin : null;
+  const page = { "Content-Security-Policy": HEADERS["Content-Security-Policy"] + `; frame-src http://*:${port} https://*:${port}${publicPlayer ? " " + publicPlayer : ""}` };
 
   const failed = (addr: string) => {
     const t = now(), recent = (fails.get(addr) ?? []).filter((x) => t - x < FAILS_WINDOW_MS);
@@ -271,7 +274,8 @@ export function makeServer(o: Options): Server {
     // ---- THE EASTER EGG: no sign-in, its own password ----------------------------------------------------------------
     if (path === "/api/egg/carts" && method === "GET") {
       if (!o.egg) throw new Refused("No releases here.", 404);
-      return json(res, { ...o.egg.carts(), pass: o.accounts.hasEggPass(cookie(req, EGG_COOKIE)), player: o.player ?? 4740 });
+      return json(res, { ...o.egg.carts(), pass: o.accounts.hasEggPass(cookie(req, EGG_COOKIE)), player: o.player ?? 4740,
+                         playerUrl: isPublic(req) ? publicPlayer : null });
     }
     if (path === "/api/egg/open" && method === "POST") {
       if (throttled(client)) throw new Refused("Too many tries. Wait a quarter of an hour and try again.", 429);

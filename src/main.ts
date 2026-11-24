@@ -137,7 +137,9 @@ const changes = new Changes({ repos: reposBeside(DAEMONS, COMPANION, ROOT, dirna
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
                            redmine: tickets, answers, spaces, minds, laneOf, changes, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art"),
                            // E-19: the public name the house's web server proxies here (comma-separated; "" for none)
-                           publicHosts: (process.env.EUDAIMONIA_PUBLIC_HOSTS ?? "dashboard.daemons.codemusic.ca").split(",") });
+                           publicHosts: (process.env.EUDAIMONIA_PUBLIC_HOSTS ?? "dashboard.daemons.codemusic.ca").split(","),
+                           // E-20: where the egg's player is from away ("" for none)
+                           publicPlayer: (process.env.EUDAIMONIA_PUBLIC_PLAYER ?? "https://play.daemons.codemusic.ca") || null });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);
   process.exit(1);
