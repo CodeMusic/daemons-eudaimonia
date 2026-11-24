@@ -40,6 +40,12 @@ export class Avatars {
 
   get count() { return this.byId.size; }
   has(id: number) { return this.byId.has(id); }
+  /** A daemon by its name, as Redmine's Daemon field keeps it (the names are unique). */
+  byName(name: string): Daemon | null {
+    const n = name.trim().toUpperCase();
+    for (const d of this.byId.values()) if (d.name.toUpperCase() === n) return d;
+    return null;
+  }
   daemon(id: number) { return this.byId.get(id) ?? null; }
 
   /** The front sprite's file, or null: only a path the INDEX names, inside DAEMONS' gfx/daemons. */

@@ -197,6 +197,22 @@ export class Accounts {
     return shown(a);
   }
 
+  /** A lane's daemon, from Redmine (lanedaemons.ts): its agent account's avatar, the account made if there is none. Its key
+   *  is made and not kept anywhere -- the admin makes a NEW KEY in ACCOUNTS when the lane needs one. */
+  async laneDaemon(lane: string, species: number): Promise<"made" | "changed" | "same"> {
+    const a = this.byName(lane);
+    if (a && a.kind !== "agent") throw new Refused(`${lane} is a person's account, not a lane's.`, 409);
+    if (a) {
+      if (a.avatar === species) return "same";
+      a.avatar = species; this.save(); return "changed";
+    }
+    const made: Account = { id: randomUUID(), name: lane, kind: "agent", admin: false, avatar: species, made: this.iso(), madeBy: null };
+    await this.renew(made);
+    this.data.accounts.push(made);
+    this.save();
+    return "made";
+  }
+
   adminAvatar(by: Account, id: string, species: number | null) {
     this.mustBeAdmin(by);
     return this.setAvatar(this.mustGet(id), species);

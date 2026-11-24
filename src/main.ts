@@ -29,6 +29,7 @@ import { RedmineReader, redmineEnv } from "./redmine.ts";
 import { Answers, answersEnv } from "./answers.ts";
 import { Releases } from "./releases.ts";
 import { makeServer } from "./server.ts";
+import { LaneDaemons, laneKeysFrom } from "./lanedaemons.ts";
 import { px, type Db } from "./praxis.ts";
 import { give, pull } from "./replica.ts";
 import { Spaces } from "./spaces.ts";
@@ -134,11 +135,23 @@ setInterval(() => void exchange(), 60_000);
 // E-1's last slice: THE CHANGES -- what was pushed lately in the clones beside this one, and GitHub's open pull requests
 const changes = new Changes({ repos: reposBeside(DAEMONS, COMPANION, ROOT, dirname(ROOT)), tickets });
 
+// each lane's daemon, kept in Redmine on the lane's user (lanedaemons.ts): read every minute with the lanes' own keys
+const laneKeyMap = existsSync(envFile) ? laneKeysFrom(readFileSync(envFile, "utf8")) : {};
+const laneDaemons = rm && Object.keys(laneKeyMap).length
+  ? new LaneDaemons({ url: rm.url, keys: laneKeyMap, accounts, avatars, log: say,
+                      spriteBase: process.env.EUDAIMONIA_SPRITE_BASE ?? "https://dashboard.daemons.codemusic.ca" }) : null;
+say(laneDaemons ? `each lane's daemon follows its Redmine user (${laneDaemons.lanes.length} lanes)`
+                : `the lanes' daemons are kept here only: no lane keys in ${envFile}`);
+const followRedmine = async () => { const c = await laneDaemons?.pull(); if (c?.length) say(`daemons from Redmine: ${c.join(", ")}`); };
+void followRedmine();
+setInterval(() => void followRedmine(), 60_000);
+
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
                            redmine: tickets, answers, spaces, minds, laneOf, changes, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art"),
                            // E-19: the public name the house's web server proxies here (comma-separated; "" for none)
                            publicHosts: (process.env.EUDAIMONIA_PUBLIC_HOSTS ?? "dashboard.daemons.codemusic.ca").split(","),
                            // E-20: where the egg's player is from away ("" for none)
+                           laneDaemons,
                            publicPlayer: (process.env.EUDAIMONIA_PUBLIC_PLAYER ?? "https://play.daemons.codemusic.ca") || null });
 server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`eudaimonia: ${e.code === "EADDRINUSE" ? `port ${port} is in use (is it running already?)` : e.message}`);

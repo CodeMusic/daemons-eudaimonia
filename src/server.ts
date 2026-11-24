@@ -83,7 +83,9 @@ export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?:
                         /** E-19: public names this site answers through the house's proxy (dashboard.daemons.codemusic.ca) */
                         publicHosts?: readonly string[];
                         /** E-20: the player's public address, for a page asked by a public name (https://play.daemons.codemusic.ca) */
-                        publicPlayer?: string | null };
+                        publicPlayer?: string | null;
+                        /** each lane's daemon kept in Redmine: the admin's choice here is written back there (lanedaemons.ts) */
+                        laneDaemons?: { push(lane: string, id: number): Promise<boolean> } | null };
 
 type Who = { account: Account; limited: boolean } | null;
 
@@ -347,6 +349,7 @@ export function makeServer(o: Options): Server {
       const r = await o.accounts.make(me, String(body.name ?? ""), String(body.kind ?? "") as Kind, !!body.admin,
                                        body.avatar == null ? null : avatar(body.avatar));
       log(`${addr} ${me.name} made ${r.account.kind} ${r.account.name}`);
+      if (r.account.kind === "agent" && r.account.avatar != null) await toRedmine(r.account.name, r.account.avatar);
       return json(res, r, 201);
     }
     const one = /^\/api\/accounts\/([0-9a-f-]{36})$/.exec(path);
@@ -356,7 +359,11 @@ export function makeServer(o: Options): Server {
       if (action === "reset") r = await o.accounts.reset(me, id);
       else if (action === "disable" || action === "enable") r = { account: o.accounts.setDisabled(me, id, action === "disable") };
       else if (action === "admin" || action === "member") r = { account: o.accounts.setAdmin(me, id, action === "admin") };
-      else if (action === "avatar") r = { account: o.accounts.adminAvatar(me, id, avatar(body.avatar)) };
+      else if (action === "avatar") {
+        const a = o.accounts.adminAvatar(me, id, avatar(body.avatar));
+        if (a.kind === "agent" && a.avatar != null) await toRedmine(a.name, a.avatar);
+        r = { account: a };
+      }
       else throw new Refused("No such action.");
       log(`${addr} ${me.name}: ${action} ${o.accounts.get(id)?.name}`);
       return json(res, r);
@@ -383,6 +390,12 @@ export function makeServer(o: Options): Server {
       }
     }
     return notFound(res);
+  }
+
+  /** A lane's daemon chosen here goes to its Redmine user too; Redmine out of reach is said, never fatal. */
+  async function toRedmine(lane: string, id: number) {
+    try { if (await o.laneDaemons?.push(lane, id)) log(`${lane}'s daemon written to Redmine`); }
+    catch (e) { log(`${lane}'s daemon not written to Redmine (${(e as Error).message}): Redmine's next read will put it back`); }
   }
 
   function avatar(v: unknown): number | null {
