@@ -123,7 +123,12 @@ async function openLane(name) {
   const l = board?.lanes.find((x) => x.lane === name);
   if (!l && !board) return;
   const head = (v) => {
-    $("lane-scene").replaceChildren(el("span", { class: `scene big ${v.working.length ? "working" : "asleep"}` }, sprite(v.daemon, 96), keyboard()));
+    // the admin changes a lane's daemon by clicking it -- or its ? -- right where it is drawn (the user, 2026-11-23)
+    const pick = me()?.admin && !me()?.mustChange && l
+      ? el("button", { class: "sprite-pick", title: "Choose this lane's daemon", "aria-label": `Choose the ${name} lane's daemon`,
+                       onclick: () => giveDaemon(l) }, sprite(v.daemon, 96))
+      : sprite(v.daemon, 96);
+    $("lane-scene").replaceChildren(el("span", { class: `scene big ${v.working.length ? "working" : "asleep"}` }, pick, keyboard()));
     $("lane-title").textContent = (v.daemonName ?? v.lane).toUpperCase();
     $("lane-line").textContent = [`The ${v.lane} lane`, v.since && `on the tickets since ${day(v.since)}`, v.last && `last moved ${ago(v.last)}`,
       v.stale && "the tickets can't be reached: as they last stood"].filter(Boolean).join(" · ");

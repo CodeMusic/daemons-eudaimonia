@@ -396,3 +396,7 @@ dialog.space.full[data-town]:not([data-town=""]) { background: var(--bg); }
 .choices { grid-template-columns: 1fr 1fr; }
 label.play-way input { width: auto; flex: none; margin: 3px 0 0; }
 @media (max-width: 640px) { .choices { grid-template-columns: 1fr; } }
+
+/* the admin's way to choose a lane's daemon: the sprite (or its ?) itself */
+.sprite-pick { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
+.sprite-pick:hover, .sprite-pick:focus-visible { outline: 2px dashed currentColor; outline-offset: 4px; }
