@@ -123,6 +123,34 @@ lane its key is (`POST /api/mind/<lane>`, the key in `X-Redmine-Key`). It shows 
 tile on THE DASHBOARD, **to someone signed in only**: a handoff carries private material, so the space's reach is home
 and is never made public. It goes to the always-on replica with the spaces of your own.
 
+### THE SANDBOX: where an agent works (E-15)
+
+An AI agent -- a lane's daemon employee -- works in a sandbox the user chose by multiple choice, 2026-11-23: **its own
+copy of every repository it holds a ticket in** (T- is DAEMONS and its engines, C- the companion and PRAXIS's engine,
+E- this one; never `docs/private/`), **the tailnet, GitHub, npm and the model's API**, and **its work goes out as a
+branch and a pull request**. On the Mac that holds the repositories:
+
+    ./bindEudaimonia.sh sandbox scope --lane game --ticket T-604        # which repositories, and the tickets why
+    ./bindEudaimonia.sh sandbox run --lane game --ticket T-604 --pass ANTHROPIC_API_KEY -- <the agent's command>
+
+Three walls, none of them the agent's good manners (`src/sandbox.ts`, `src/sandbox_main.ts`):
+
+- **Files**: macOS's own sandbox (`sandbox-exec`, a profile written for the run). Under the home folder it reads only its
+  root and the real repositories' object stores, and it writes only in its root. Each repository is a `git clone
+  --shared` there, on `agent/<lane>/<ticket>` from what was last pushed: its own `.git`, so no commit of its can move a
+  branch of the real one. `docs/private/` is refused by name wherever it is, and `launchctl`, `open` and `osascript`,
+  which could start something outside, are refused too.
+- **Network**: one connection, to the runner's proxy on this machine, which forwards only to GitHub, npm, the model's
+  API (port 443 or 80) and the tailnet (a name only when it looks up to a tailnet address, and reached by that address).
+  Everything refused is counted in the run's log.
+- **Out**: when the agent stops, the runner -- outside the sandbox, with the user's own GitHub sign-in -- fetches the
+  branch alone into a clean copy and pushes it from there, so a hook or a setting the agent wrote into its `.git` never
+  runs out here, then opens a pull request (or finds the open one). The agent never holds a credential: only what
+  `--pass` names by name reaches it (the model's key).
+
+Each run is logged in `data/sandbox/runs.jsonl` and its root removed when it ends (`--keep` keeps it, `--dry-run`
+pushes nothing, `--hours` stops it, two by default). It refuses to start with under 3 GB free.
+
 ## The DAEMONS playground
 
 **An all-in-one harness to demo and beta test [DAEMONS](https://github.com/CodeMusic/DAEMONS)**, the whole game and

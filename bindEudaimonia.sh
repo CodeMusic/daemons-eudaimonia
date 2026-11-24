@@ -15,6 +15,7 @@
 #   ./bindEudaimonia.sh never           stop doing that
 #   ./bindEudaimonia.sh replica [--port N]  PRAXIS's always-on replica alone, mirroring Redmine (E-9; roverbyteseer, 4742)
 #   ./bindEudaimonia.sh replica always|never  keep the replica running as a login agent, or stop doing that
+#   ./bindEudaimonia.sh sandbox scope|run --lane L --ticket T-n [...] -- command   an agent in its sandbox (E-15)
 #
 # It reads the ROMs from DAEMONS beside this repository (../DAEMONS, or $DAEMONS_ROOT) and answers only this machine,
 # a private network and the tailnet. The COMPANION tab is a companion of the playground's own, one for each build,
@@ -94,6 +95,8 @@ need_engine() {   # the engine npm last installed is the commit the lockfile pin
 }
 REPLICA_AGENT="$HOME/Library/LaunchAgents/ca.codemusic.praxis-replica.plist"
 case "${1:-}" in
+  sandbox) shift; NODE="$(site_node)" || { echo "bindEudaimonia: the sandbox needs Node 22.18 or newer" >&2; exit 69; }
+    exec "$NODE" src/sandbox_main.ts "$@" ;;
   site) shift; NODE="$(site_node)" || { echo "bindEudaimonia: EUDAIMONIA needs Node 22.18 or newer" >&2; exit 69; }
         need_engine; exec "$NODE" src/main.ts "$@" ;;
   replica) shift
