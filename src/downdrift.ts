@@ -23,6 +23,9 @@ const CALLS: [string, RegExp][] = [
   ["POST", /^\/api\/drifts\/(save|choose)$/],
   ["GET", /^\/api\/sleep\/tracks$/],
   ["GET", /^\/api\/sleep\/track\/[0-9a-f]{8,64}\/phone\.m4a$/],
+  ["POST", /^\/api\/reverie\/render$/],                              // C-508: a drift over a piece, as one MP3
+  ["GET", /^\/api\/reverie\/renders$/],
+  ["GET", /^\/api\/reverie\/render\/[a-z0-9-]{1,90}--[0-9a-f]{32}\.mp3$/],
 ];
 /** The hub path a relayed request stands for (/downdrift/hub/api/... -> /api/...), or null when it is not one the studio makes. */
 export function relayed(method: string, path: string): string | null {

@@ -82,6 +82,10 @@ test("the relay's rules and the env file", () => {
   assert.equal(relayed("POST", "/downdrift/hub/api/drifts"), null);
   assert.equal(relayed("GET", "/downdrift/hub/api/sleep/track/abcdef12/phone.m4a"), "/api/sleep/track/abcdef12/phone.m4a");
   assert.equal(relayed("GET", "/downdrift/hub/api/sleep/track/abcdef12/watch.wav"), null);
+  assert.equal(relayed("POST", "/downdrift/hub/api/reverie/render"), "/api/reverie/render");
+  assert.equal(relayed("GET", "/downdrift/hub/api/reverie/renders"), "/api/reverie/renders");
+  assert.equal(relayed("GET", `/downdrift/hub/api/reverie/render/first-rain--${"a".repeat(32)}.mp3`), `/api/reverie/render/first-rain--${"a".repeat(32)}.mp3`);
+  assert.equal(relayed("GET", "/downdrift/hub/api/reverie/render/../settings.mp3"), null);
   assert.deepEqual(hubEnv('REDMINE_URL=x\nDAEMONS_HUB_URL="http://daemons-hearth:4730/"\nexport DAEMONS_HUB_KEY=k1'), { url: "http://daemons-hearth:4730", key: "k1" });
   assert.equal(hubEnv("DAEMONS_HUB_URL=x"), null);
   assert.equal(throughRelay('<meta name="downdrift-api" content="/api">'), '<meta name="downdrift-api" content="/downdrift/hub/api">');

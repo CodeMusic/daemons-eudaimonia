@@ -152,7 +152,7 @@ export function makeServer(o: Options): Server {
         if (method === "POST") {   // from the studio's own page, as JSON -- as every browser POST here is
           if (!req.headers.origin || !sameSite(req.headers.origin, req.headers.host, isPublic(req) ? publics : [])) throw new Refused("Not from a page of this site's.", 403);
           body = JSON.stringify(await read(req));
-          log(`${who!.account.name} saves or chooses a drift through THE DOWNDRIFT STUDIO`);
+          log(`${who!.account.name} asks the hub ${hubPath === "/api/reverie/render" ? "for a render" : "to save or choose a drift"} through THE DOWNDRIFT STUDIO`);
         }
         const r = await askHub(o.hub, method, hubPath, body);
         res.writeHead(r.status, { "Content-Type": r.headers.get("content-type") ?? "application/octet-stream", "Cache-Control": "no-store", ...HEADERS });
