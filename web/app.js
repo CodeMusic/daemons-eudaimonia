@@ -45,6 +45,8 @@ $("signin-form").addEventListener("submit", (ev) => {
   busy(f, async () => {
     await api("POST", "/api/signin", { name: f.name.value, password: f.password.value });
     $("signin").close();
+    // C-507: signed in at THE DOWNDRIFT STUDIO's own name -- on to the studio (unless the password must change first)
+    if (/^downdrift\./i.test(location.hostname) && !(await api("GET", "/api/me")).limited) { location.href = "/downdrift/"; return; }
     await refresh();
   });
 });

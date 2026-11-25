@@ -16,6 +16,7 @@
 // the user adds it, the sessions' REDMINE_API_KEY (E-1). E-9: once this site's PRAXIS replica (praxis.sqlite, beside the
 // accounts) has pulled the mirrored tickets from the always-on one ($PRAXIS_REPLICA, or http://roverbyteseer:4742; "off"
 // for none), the dashboard reads them there, and Redmine only until then.
+import { hubEnv } from "./downdrift.ts";   // C-507
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
@@ -69,6 +70,9 @@ const egg = new Egg(RELEASES);
 }
 const envFile = process.env.REDMINE_ENV || join(homedir(), ".redmine.env");
 const rm = existsSync(envFile) ? redmineEnv(readFileSync(envFile, "utf8")) : null;
+// C-507: the companion hub, for THE DOWNDRIFT STUDIO (its address and key beside the Redmine keys)
+const hub = existsSync(envFile) ? hubEnv(readFileSync(envFile, "utf8")) : null;
+say(hub ? `THE DOWNDRIFT STUDIO is served from the hub at ${hub.url}, to someone signed in` : `no hub for THE DOWNDRIFT STUDIO: no DAEMONS_HUB_URL and DAEMONS_HUB_KEY in ${envFile}`);
 const redmine = rm ? new RedmineReader(rm.url, rm.key) : null;
 say(redmine ? `THE DASHBOARD reads the tickets from PRAXIS once its replica holds them, and from ${rm!.url} until then (read-only, as the playground lane)`
             : `THE DASHBOARD has no tickets: no REDMINE_URL and REDMINE_KEY_PLAYGROUND in ${envFile}`);
@@ -149,7 +153,8 @@ setInterval(() => void followRedmine(), 60_000);
 const server = makeServer({ accounts, avatars, egg, player: PLAYER, web: join(ROOT, "web"), log: say,
                            redmine: tickets, answers, spaces, minds, laneOf, changes, releases: new Releases(egg), art: join(COMPANION, "server", "data", "art"),
                            // E-19: the public name the house's web server proxies here (comma-separated; "" for none)
-                           publicHosts: (process.env.EUDAIMONIA_PUBLIC_HOSTS ?? "dashboard.daemons.codemusic.ca").split(","),
+                           publicHosts: (process.env.EUDAIMONIA_PUBLIC_HOSTS ?? "dashboard.daemons.codemusic.ca,downdrift.daemons.codemusic.ca").split(","),
+                           hub,   // C-507
                            // E-20: where the egg's player is from away ("" for none)
                            laneDaemons,
                            publicPlayer: (process.env.EUDAIMONIA_PUBLIC_PLAYER ?? "https://play.daemons.codemusic.ca") || null });

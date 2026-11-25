@@ -42,6 +42,7 @@
 // An agent calls the API with `Authorization: Bearer <its key>`; a person's browser with the session cookie. A POST
 // from a browser must come from a page of this site (its Origin is this Host), as JSON -- another site's page cannot
 // sign anyone in, out or anywhere else.
+import { askHub, relayed, STUDIO_CSP, STUDIO_FILES, throughRelay, type Hub } from "./downdrift.ts";   // C-507
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createReadStream, readFileSync, existsSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
@@ -68,6 +69,7 @@ const HEADERS = {
 };
 
 export type Options = { accounts: Accounts; avatars: Avatars; web: string; log?: (line: string) => void; now?: () => number;
+                        hub?: Hub | null;   // C-507: the companion hub, for THE DOWNDRIFT STUDIO (downdrift.ts)
                         egg?: Egg; player?: number;
                         /** E-1: the tickets (null: no key to read them with) -- PRAXIS's replica once it holds them (E-9),
                          *  Redmine until then -- the releases, the companion's art folder */
@@ -129,6 +131,44 @@ export function makeServer(o: Options): Server {
   async function route(req: IncomingMessage, res: ServerResponse, addr: string, client: string) {
     const url = new URL(req.url ?? "/", "http://site");
     const path = url.pathname, method = req.method ?? "GET";
+
+    // C-507: THE DOWNDRIFT STUDIO -- the hub's, served here to someone signed in, its calls to the hub relayed (downdrift.ts)
+    const studioName = /^downdrift\./i.test(req.headers.host ?? "");
+    if (path === "/downdrift" || path.startsWith("/downdrift/") || (studioName && path === "/")) {
+      const who = o.accounts.who(cookie(req, COOKIE), null), signedIn = !!who && !who.limited;
+      if (studioName && path === "/") {
+        if (signedIn) { res.writeHead(302, { Location: "/downdrift/", ...HEADERS }).end(); return; }
+        return file(res, join(o.web, "index.html"), "no-cache", page);   // the site's own sign-in; then on to the studio (app.js)
+      }
+      if (path === "/downdrift") { res.writeHead(308, { Location: "/downdrift/", ...HEADERS }).end(); return; }
+      if (!signedIn) {
+        if (path.startsWith("/downdrift/hub/")) throw new Refused("Sign in to EUDAIMONIA first.", 401);
+        res.writeHead(302, { Location: "/", ...HEADERS }).end(); return;
+      }
+      if (!o.hub) throw new Refused("This site has no hub to reach (DAEMONS_HUB_URL and DAEMONS_HUB_KEY).", 503);
+      const hubPath = relayed(method, path);
+      if (hubPath) {
+        let body: string | undefined;
+        if (method === "POST") {   // from the studio's own page, as JSON -- as every browser POST here is
+          if (!req.headers.origin || !sameSite(req.headers.origin, req.headers.host, isPublic(req) ? publics : [])) throw new Refused("Not from a page of this site's.", 403);
+          body = JSON.stringify(await read(req));
+          log(`${who!.account.name} saves or chooses a drift through THE DOWNDRIFT STUDIO`);
+        }
+        const r = await askHub(o.hub, method, hubPath, body);
+        res.writeHead(r.status, { "Content-Type": r.headers.get("content-type") ?? "application/octet-stream", "Cache-Control": "no-store", ...HEADERS });
+        return res.end(method === "HEAD" ? undefined : Buffer.from(await r.arrayBuffer()));
+      }
+      if ((method === "GET" || method === "HEAD") && STUDIO_FILES.has(path)) {
+        const r = await askHub(o.hub, "GET", path === "/downdrift/index.html" ? "/downdrift/" : path);
+        if (!r.ok) return notFound(res);
+        const index = path === "/downdrift/" || path === "/downdrift/index.html";
+        const data = index ? Buffer.from(throughRelay(await r.text())) : Buffer.from(await r.arrayBuffer());
+        res.writeHead(200, { "Content-Type": r.headers.get("content-type") ?? "application/octet-stream", "Cache-Control": "no-cache",
+                             ...HEADERS, "Content-Security-Policy": STUDIO_CSP }).end(method === "HEAD" ? undefined : data);
+        return;
+      }
+      return notFound(res);
+    }
 
     if (method === "GET" || method === "HEAD") {
       if (path === "/" || path === "/index.html") return file(res, join(o.web, "index.html"), "no-cache", page);
